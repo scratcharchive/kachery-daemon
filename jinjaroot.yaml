@@ -1,0 +1,9 @@
+projectName: kachery_daemon
+projectVersion: 0.1.0
+projectAuthor: Jeremy Magland
+projectAuthorEmail: jmagland@flatironinstitute.org
+projectDescription: Kachery node daemon
+projectUrl: https://github.com/kacheryhub/kachery-daemon
+projectBugTrackerUrl: https://github.com/kacheryhub/kachery-daemon/issues
+pythonPackageDir: .
+npmPackageDir: ./daemon
