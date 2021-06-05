@@ -12,7 +12,7 @@ export default class KacheryHubService {
     #kacheryHubClient: KacheryHubClient
     constructor(node: KacheryDaemonNode, private opts: {}) {
         this.#node = node
-        this.#kacheryHubClient = new KacheryHubClient({keyPair: node.keyPair(), nodeLabel: node.nodeLabel(), ownerId: node.ownerId(), kacheryHubUrl: 'http://localhost:3000'})
+        this.#kacheryHubClient = new KacheryHubClient({keyPair: node.keyPair(), nodeLabel: node.nodeLabel(), ownerId: node.ownerId()})
 
         this._start()
     }

@@ -69,7 +69,7 @@ async function asyncLoop<T>(list: T[], func: (item: T, index: number) => Promise
 export const loadFile = async (node: KacheryDaemonNode, fileKey: FileKey, opts: {label: string, _numRetries?: number}): Promise<DataStreamy> => {
     const r = await node.kacheryStorageManager().findFile(fileKey)
     if (r.found) {
-        if (false) { // skip this for debugging
+        if (true) { // for debugging (not finding locally) switch to false
             const ret = new DataStreamy()
             ret.producer().end()
             return ret

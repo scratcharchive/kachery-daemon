@@ -148,7 +148,7 @@ class KacheryHubClient {
         return x.data
     }
     _kacheryHubUrl() {
-        return this.opts.kacheryHubUrl || 'https://kachery-hub.vercel.app'
+        return this.opts.kacheryHubUrl || 'https://kacheryhub.org'
     }
 }
 

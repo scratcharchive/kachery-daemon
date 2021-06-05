@@ -10,4 +10,4 @@ cd daemon
 yarn install
 yarn build
 npm pack
-cp kachery-daemon-*.tgz ../kachery_daemon/
+cp kachery-daemon-node*.tgz ../kachery_daemon/

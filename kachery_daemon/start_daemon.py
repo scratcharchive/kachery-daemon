@@ -34,7 +34,7 @@ def start_daemon(*, label: str, owner: str, method: str, verbose: int, node_arg:
         for na in node_arg:
             start_args.append(f'--node-arg={na}')
 
-        npm_package = f'{thisdir}/kachery-daemon-{__version__}.tgz'
+        npm_package = f'{thisdir}/kachery-daemon-node-{__version__}.tgz'
         if not os.path.exists(npm_package):
             raise Exception(f'No such file: {npm_package}')
 

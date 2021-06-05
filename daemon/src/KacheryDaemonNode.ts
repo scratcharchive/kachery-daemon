@@ -55,7 +55,7 @@ class KacheryDaemonNode {
             }
         })
 
-        this.#kacheryHubInterface = new KacheryHubInterface({keyPair: this.#keyPair, ownerId: p.ownerId, nodeLabel: p.label, kacheryHubUrl: 'http://localhost:3000'})
+        this.#kacheryHubInterface = new KacheryHubInterface({keyPair: this.#keyPair, ownerId: p.ownerId, nodeLabel: p.label})
 
         this.#kacheryHubInterface.onIncomingFileRequest(({fileKey, channelName, fromNodeId, bucketUri}) => {
             this._handleIncomingFileRequest({fileKey, channelName, fromNodeId, bucketUri})
