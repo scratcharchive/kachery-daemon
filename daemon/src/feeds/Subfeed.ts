@@ -232,6 +232,7 @@ class Subfeed {
             const body = signedMessage.body;
             const signature = signedMessage.signature;
             if (!verifySignatureJson(body as any as JSONObject, signature, this.#publicKey)) {
+                console.warn(JSON.stringify(signedMessage, null, 4))
                 throw Error(`Error verifying signature when appending signed message for: ${this.feedId} ${this.subfeedHash} ${signature}`);
             }
             if ((body.previousSignature || null) !== (previousSignature || null)) {

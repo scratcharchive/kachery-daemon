@@ -178,13 +178,15 @@ class FeedManager {
         });
     }
     async createOrRenewIncomingSubfeedSubscription(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
+        if (!this.hasWriteableFeed(feedId)) return
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         if (!subfeed.isWriteable()) {
             throw Error('Cannot have an incoming subscription to a subfeed that is not writeable')
         }
         this.#incomingSubfeedSubscriptionManager.createOrRenewIncomingSubscription(channelName, feedId, subfeedHash)
         if (Number(position) < Number(subfeed.getNumLocalMessages())) {
-            this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
+            await this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
+            await this._reportSubfeedUpdateToChannel(channelName, feedId, subfeedHash, subfeed.getNumLocalMessages())
         }
     }
     async reportSubfeedMessageCountUpdate(feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) {
@@ -299,11 +301,14 @@ class FeedManager {
             }
         }
 
+        this._reportSubfeedUpdateToChannel(channelName, feedId, subfeedHash, messageCount(i2))
+    }
+    async _reportSubfeedUpdateToChannel(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) {
         this.kacheryHubInterface.reportToChannelSubfeedMessagesAdded(
             channelName,
             feedId,
             subfeedHash,
-            messageCount(i2)
+            messageCount
         )
     }
 }
