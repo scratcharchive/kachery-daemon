@@ -258,6 +258,18 @@ export const isGetNodeForUserRequest = (x: any): x is GetNodeForUserRequest => {
     })
 }
 
+export type GetNodeForUserResponse = {
+    found: boolean,
+    nodeConfig?: NodeConfig
+}
+
+export const isGetNodeForUserResponse = (x: any): x is GetNodeForUserResponse => {
+    return _validateObject(x, {
+        found: isBoolean,
+        nodeConfig: optional(isNodeConfig)
+    })
+}
+
 export type GetChannelRequest = {
     type: 'getChannel'
     channelName: string

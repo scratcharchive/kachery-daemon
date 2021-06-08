@@ -20,14 +20,16 @@ def cli():
 @click.option('--method', default='npm', help='Method for starting daemon: npm (default) or dev')
 @click.option('--node-arg', multiple=True, help='Additional arguments to send to node')
 @click.option('--auth-group', default='', help='The os group that has access to this daemon')
-def start(label: str, owner: str, method: str, verbose: int, node_arg: List[str], auth_group: str):
+@click.option('--kachery-hub-url', default='https://kacheryhub.org', help='The url for the kachery hub app')
+def start(label: str, owner: str, method: str, verbose: int, node_arg: List[str], auth_group: str, kachery_hub_url: str):
     start_daemon(
         label=label,
         owner=owner,
         method=method,
         verbose=verbose,
         node_arg=node_arg,
-        auth_group=auth_group
+        auth_group=auth_group,
+        kachery_hub_url=kachery_hub_url
     )
 
 @click.command(help="Print information about this node.")

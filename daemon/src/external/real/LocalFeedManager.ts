@@ -1,8 +1,8 @@
 import fs from 'fs';
-import { createKeyPair, hexToPrivateKey, JSONStringifyDeterministic, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../common/types/crypto_util';
 import GarbageMap from '../../common/GarbageMap';
+import { createKeyPair, hexToPrivateKey, JSONStringifyDeterministic, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../common/types/crypto_util';
+import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, _validateObject } from '../../common/types/kacheryTypes';
 import { isReadableByOthers } from '../../common/util';
-import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedAccessRules, SubfeedHash, _validateObject } from '../../common/types/kacheryTypes';
 import MutableManager from '../../mutables/MutableManager';
 import LocalFeedsDatabase from './LocalFeedsDatabase';
 
@@ -268,14 +268,8 @@ export default class LocalFeedManager {
         // Read the messages file
         return await this.#localFeedsDatabase.getSignedSubfeedMessages(feedId, subfeedHash)
     }
-    async getSubfeedAccessRules(feedId: FeedId, subfeedHash: SubfeedHash): Promise<SubfeedAccessRules | null> {
-        return await this.#localFeedsDatabase.getSubfeedAccessRules(feedId, subfeedHash)
-    }
     async appendSignedMessagesToSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) {
         await this.#localFeedsDatabase.appendSignedMessagesToSubfeed(feedId, subfeedHash, messages)
-    }
-    async setSubfeedAccessRules(feedId: FeedId, subfeedHash: SubfeedHash, accessRules: SubfeedAccessRules): Promise<void> {
-        await this.#localFeedsDatabase.setSubfeedAccessRules(feedId, subfeedHash, accessRules)
     }
 }
 

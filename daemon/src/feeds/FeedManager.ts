@@ -1,40 +1,41 @@
+import axios from 'axios';
+import { timeStamp } from 'console';
 import GarbageMap from '../common/GarbageMap';
+import { DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../common/types/kacheryTypes';
 import { sleepMsec } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedAccessRules, SubfeedHash, SubfeedMessage, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName, SubmittedSubfeedMessage, submittedSubfeedMessageToSubfeedMessage } from '../common/types/kacheryTypes';
 import KacheryDaemonNode from '../KacheryDaemonNode';
-import NewIncomingSubfeedSubscriptionManager from './NewIncomingSubfeedSubscriptionManager';
-import NewOutgoingSubfeedSubscriptionManager from './NewOutgoingSubfeedSubscriptionManager';
-import RemoteFeedManager from './RemoteFeedManager';
+import KacheryHubInterface from '../kacheryHub/KacheryHubInterface';
+import IncomingSubfeedSubscriptionManager from './IncomingSubfeedSubscriptionManager';
+import OutgoingSubfeedSubscriptionManager from './OutgoingSubfeedSubscriptionManager';
 import Subfeed from './Subfeed';
 
 class FeedManager {
     // Manages the local feeds and access to the remote feeds in channel
-    #node: KacheryDaemonNode // The kachery daemon
-    #localFeedManager: LocalFeedManagerInterface
     #subfeeds = new GarbageMap<FeedSubfeedId, Subfeed>(scaledDurationMsec(8 * 60 * 1000)) // The subfeed instances (Subfeed()) that have been loaded into memory
-    #remoteFeedManager: RemoteFeedManager // Manages the interaction with feeds on remote nodes
-    #incomingSubfeedSubscriptionManager: NewIncomingSubfeedSubscriptionManager
-    #outgoingSubfeedSubscriptionManager: NewOutgoingSubfeedSubscriptionManager
-    constructor(node: KacheryDaemonNode, localFeedManager: LocalFeedManagerInterface) {
-        this.#node = node
-        this.#localFeedManager = localFeedManager
-        this.#incomingSubfeedSubscriptionManager = new NewIncomingSubfeedSubscriptionManager(node)
-        this.#outgoingSubfeedSubscriptionManager = new NewOutgoingSubfeedSubscriptionManager(node)
-        this.#remoteFeedManager = new RemoteFeedManager(this.#node, this.#outgoingSubfeedSubscriptionManager)
+    #incomingSubfeedSubscriptionManager: IncomingSubfeedSubscriptionManager
+    #outgoingSubfeedSubscriptionManager: OutgoingSubfeedSubscriptionManager
+    constructor(private kacheryHubInterface: KacheryHubInterface, private localFeedManager: LocalFeedManagerInterface) {
+        this.#incomingSubfeedSubscriptionManager = new IncomingSubfeedSubscriptionManager()
+        this.#outgoingSubfeedSubscriptionManager = new OutgoingSubfeedSubscriptionManager()
+
+        this.#outgoingSubfeedSubscriptionManager.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
+            console.log('--- subscribe 1')
+            this.kacheryHubInterface.subscribeToRemoteSubfeed(feedId, subfeedHash)
+        })
     }
     async createFeed({ feedName } : {feedName: FeedName | null }) {
         // Create a new writeable feed on this node and return the ID of the new feed
-        return await this.#localFeedManager.createFeed(feedName)
+        return await this.localFeedManager.createFeed(feedName)
     }
     async deleteFeed({ feedId }: {feedId: FeedId}) {
-        await this.#localFeedManager.deleteFeed(feedId)
+        await this.localFeedManager.deleteFeed(feedId)
     }
     async getFeedId({ feedName }: { feedName: FeedName }) {
-        return await this.#localFeedManager.getFeedId(feedName)
+        return await this.localFeedManager.getFeedId(feedName)
     }
     async hasWriteableFeed(feedId: FeedId) {
-        return await this.#localFeedManager.hasWriteableFeed(feedId)
+        return await this.localFeedManager.hasWriteableFeed(feedId)
     }
     async appendMessages(args: { feedId: FeedId, subfeedHash: SubfeedHash, messages: SubfeedMessage[]}) {
         // Append messages to a subfeed (must be in a writeable feed on this node)
@@ -84,66 +85,6 @@ class FeedManager {
             return messages[messages.length - 1].body.message
         }
         else return null
-    }
-    async getFeedInfo({ feedId, timeoutMsec }: {feedId: FeedId, timeoutMsec: DurationMsec}): Promise<FindLiveFeedResult> {
-        // Get the information about the feed
-        // If this is a local and writeable, just return {isWriteable: true}
-        // Otherwise we search the network for the feed and if it is found we return {isWriteable: false}
-        // Otherwise, if not found, throws an exception
-        const privateKey = await this.#localFeedManager.getPrivateKeyForFeed(feedId)
-        if (privateKey) {
-            return {
-                nodeId: this.#node.nodeId()
-            }
-        }
-        else {
-            // Get the liveFeedInfo. If not found, this will throw an error.
-            throw Error('kacheryhub todo')
-            // const liveFeedInfo = await this.#remoteFeedManager.findLiveFeedInfo({feedId, timeoutMsec});
-            // return liveFeedInfo;
-        }
-    }
-    async getAccessRules({ feedId, subfeedHash }: {feedId: FeedId, subfeedHash: SubfeedHash}): Promise<SubfeedAccessRules | null> {
-        // Get the access rules for a local writeable subfeed
-        // These determine which remote nodes have permission to submit messages
-        // to this subfeed.
-        const subfeed = await this._loadSubfeed(feedId, subfeedHash);
-        if (!subfeed) {
-            /* istanbul ignore next */
-            throw Error(`Unable to load subfeed: ${feedId} ${subfeedHash}`);
-        }
-        if (!subfeed.isWriteable()) {
-            throw Error('Cannot get access rules for subfeed that is not writeable')
-        }
-        const release = await subfeed.acquireLock()
-        let accessRules
-        try {
-            accessRules = await subfeed.getAccessRules()
-        }
-        finally {
-            release()
-        }
-        return accessRules
-    }
-    async setAccessRules({ feedId, subfeedHash, accessRules }: {feedId: FeedId, subfeedHash: SubfeedHash, accessRules: SubfeedAccessRules}) {
-        // Set the access rules for a local writeable subfeed
-        // These determine which remote nodes have permission to submit messages to this subfeed
-        // to this subfeed.
-        const subfeed = await this._loadSubfeed(feedId, subfeedHash);
-        if (!subfeed) {
-            /* istanbul ignore next */
-            throw Error(`Unable to load subfeed: ${feedId} ${subfeedHash}`);
-        }
-        if (!subfeed.isWriteable()) {
-            throw Error('Cannot set access rules for subfeed that is not writeable')
-        }
-        const release = await subfeed.acquireLock()
-        try {
-            await subfeed.setAccessRules(accessRules)
-        }
-        finally {
-            release()
-        }
     }
     async watchForNewMessages({
         subfeedWatches,
@@ -237,18 +178,23 @@ class FeedManager {
             }, durationMsecToNumber(waitMsec));
         });
     }
-    async renewIncomingSubfeedSubscription(fromNodeId: NodeId, feedId: FeedId, subfeedHash: SubfeedHash): Promise<MessageCount> {
+    async createOrRenewIncomingSubfeedSubscription(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash): Promise<MessageCount> {
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         if (!subfeed.isWriteable()) {
             throw Error('Cannot have an incoming subscription to a subfeed that is not writeable')
         }
-        // CHAIN:get_remote_messages:step(11)
-        this.#incomingSubfeedSubscriptionManager.createOrRenewIncomingSubscription(fromNodeId, feedId, subfeedHash)
+        this.#incomingSubfeedSubscriptionManager.createOrRenewIncomingSubscription(channelName, feedId, subfeedHash)
         return subfeed.getNumLocalMessages()
     }
-    async reportNumRemoteMessages(remoteNodeId: NodeId, feedId: FeedId, subfeedHash: SubfeedHash, numRemoteMessages: MessageCount) {
+    async reportSubfeedMessageCountUpdate(feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) {
+        if (this.#outgoingSubfeedSubscriptionManager.hasSubfeedSubscription(feedId, subfeedHash)) {
+            const subfeed = await this._loadSubfeed(feedId, subfeedHash)
+            subfeed.reportNumRemoteMessages(channelName, messageCount)
+        }
+    }
+    async reportNumRemoteMessages(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, numRemoteMessages: MessageCount) {
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
-        subfeed.reportNumRemoteMessages(remoteNodeId, numRemoteMessages)
+        subfeed.reportNumRemoteMessages(channelName, numRemoteMessages)
     }
     async _loadSubfeed(feedId: FeedId, subfeedHash: SubfeedHash): Promise<Subfeed> {
         const timer = nowTimestamp()
@@ -263,18 +209,24 @@ class FeedManager {
         }
         else {
             // Instantiate and initialize the subfeed
-            subfeed = new Subfeed(this.#node, feedId, subfeedHash, this.#localFeedManager, this.#remoteFeedManager)
+            subfeed = new Subfeed(this.kacheryHubInterface, feedId, subfeedHash, this.localFeedManager)
             subfeed.onMessagesAdded(() => {
                 if (!subfeed) throw Error('Unexpected')
-                // CHAIN:append_messages:step(10)
-                this.#incomingSubfeedSubscriptionManager.reportMessagesAdded(feedId, subfeedHash, subfeed.getNumLocalMessages() || messageCount(0))
+                const channelNames = this.#incomingSubfeedSubscriptionManager.getChannelsSubscribingToSubfeed(feedId, subfeedHash)
+                for (let channelName of channelNames) {
+                    this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
+                }
+            })
+            subfeed.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
+                console.log('--- onSubscribeToRemoteSubfeed')
+                this.#outgoingSubfeedSubscriptionManager.createOrRenewOutgoingSubscription(feedId, subfeedHash)
             })
             // Store in memory for future access (the order is important here, see waitUntilInitialized above)
             this.#subfeeds.set(k, subfeed)
 
             // Load private key if this is writeable (otherwise, privateKey will be null)
             // important to do this after setting this.#subfeeds(k), because we need to await it
-            const privateKey = await this.#localFeedManager.getPrivateKeyForFeed(feedId)
+            const privateKey = await this.localFeedManager.getPrivateKeyForFeed(feedId)
 
             try {
                 await subfeed.initialize(privateKey)
@@ -289,6 +241,67 @@ class FeedManager {
         
         // Return the subfeed instance
         return subfeed
+    }
+    async _uploadSubfeedMessagesToChannel(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) {
+        const subfeed = await this._loadSubfeed(feedId, subfeedHash)
+        const subfeedJson = await this.kacheryHubInterface.loadSubfeedJson(channelName, feedId, subfeedHash)
+        if (subfeedJson) {
+            if (Number(subfeedJson.messageCount) >= Number(subfeed.getNumLocalMessages())) {
+                return
+            }
+        }
+        const i1 = Number(subfeedJson ? subfeedJson.messageCount : 0)
+        const i2 = Number(subfeed.getNumLocalMessages())
+        const signedMessages = subfeed.getLocalSignedMessages({position: subfeedPosition(i1), numMessages: messageCount(i2 - i1)})
+        for (let i = i1; i < i2; i++) {
+            const messageNumber = i
+            const uploadUrl = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrl({channelName, feedId, subfeedHash, messageNumber})
+            const signedMessage = signedMessages[i - i1]
+            const signedMessageContent = new TextEncoder().encode(JSON.stringify(signedMessage))
+            const resp = await axios.put(uploadUrl.toString(), signedMessageContent, {
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Length': signedMessageContent.length
+                },
+                maxBodyLength: Infinity, // apparently this is important
+                maxContentLength: Infinity // apparently this is important
+            })
+            if (resp.status !== 200) {
+                throw Error(`Error in upload of subfeed message: ${resp.statusText}`)
+            }
+        }
+
+        {
+            // not the best way to do this! (worried about race condition)
+            // let's reload the subfeed.json in case it has changed
+            // in future we should put a local lock, not sure
+            const subfeedJson2 = await this.kacheryHubInterface.loadSubfeedJson(channelName, feedId, subfeedHash) || {
+                messageCount: 0
+            }
+            if (Number(subfeedJson2.messageCount) < i2) {
+                subfeedJson2.messageCount = messageCount(i2)
+                const uploadUrl = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrl({channelName, feedId, subfeedHash, subfeedJson: true})
+                const subfeedJsonContent = new TextEncoder().encode(JSON.stringify(subfeedJson2))
+                const resp = await axios.put(uploadUrl.toString(), subfeedJsonContent, {
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'Content-Length': subfeedJsonContent.length
+                    },
+                    maxBodyLength: Infinity, // apparently this is important
+                    maxContentLength: Infinity // apparently this is important
+                })
+                if (resp.status !== 200) {
+                    throw Error(`Error in upload of subfeed json: ${resp.statusText}`)
+                }
+            }
+        }
+
+        this.kacheryHubInterface.reportToChannelSubfeedMessagesAdded(
+            channelName,
+            feedId,
+            subfeedHash,
+            messageCount(i2)
+        )
     }
 }
 

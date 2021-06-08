@@ -14,7 +14,8 @@ export interface StartDaemonOpts {
         mirror?: boolean,
         kacheryHub?: boolean,
         clientAuth?: boolean
-    }
+    },
+    kacheryHubUrl: string
 }
 
 export interface DaemonInterface {
@@ -48,6 +49,7 @@ const startDaemon = async (args: {
         ownerId,
         externalInterface,
         opts: {
+            kacheryHubUrl: opts.kacheryHubUrl
         }
     })
 

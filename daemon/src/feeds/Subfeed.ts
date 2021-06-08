@@ -4,11 +4,11 @@ import { nextTick } from 'process';
 import { feedIdToPublicKeyHex, getSignatureJson, hexToPublicKey, verifySignatureJson } from '../common/types/crypto_util';
 import { randomAlphaString } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedAccessRules, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
-import KacheryDaemonNode from '../KacheryDaemonNode';
+import { DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
 import LocalSubfeedSignedMessagesManager from './LocalSubfeedSignedMessagesManager';
-import RemoteFeedManager from './RemoteFeedManager';
+import KacheryDaemonNode from '../KacheryDaemonNode';
 import RemoteSubfeedMessageDownloader from './RemoteSubfeedMessageDownloader';
+import KacheryHubInterface from '../kacheryHub/KacheryHubInterface';
 // import NewOutgoingSubfeedSubscriptionManager from './NewOutgoingSubfeedSubscriptionManager';
 
 class Subfeed {
@@ -16,7 +16,6 @@ class Subfeed {
     #publicKey: PublicKey // The public key of the feed (which is determined by the feed ID)
     #privateKey: PrivateKey | null // The private key (or null if this is not writeable on the local node) -- set below
     #localSubfeedSignedMessagesManager: LocalSubfeedSignedMessagesManager // The signed messages loaded from the messages file (in-memory cache)
-    #accessRules: SubfeedAccessRules | null = null // Access rules for this subfeed -- like which nodes on the network have permission to submit messages (perhaps no longer used)
     #isWriteable: boolean | null = null
     // #outgoingSubfeedSubscriptionManager: NewOutgoingSubfeedSubscriptionManager
     
@@ -29,13 +28,15 @@ class Subfeed {
 
     #onMessagesAddedCallbacks: (() => void)[] = []
 
+    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash) => void)[] = []
+
     #mutex = new Mutex()
     #remoteSubfeedMessageDownloader: RemoteSubfeedMessageDownloader
 
-    constructor(private node: KacheryDaemonNode, private feedId: FeedId, private subfeedHash: SubfeedHash, private localFeedManager: LocalFeedManagerInterface, private remoteFeedManager: RemoteFeedManager) {
+    constructor(private kacheryHubInterface: KacheryHubInterface, private feedId: FeedId, private subfeedHash: SubfeedHash, private localFeedManager: LocalFeedManagerInterface) {
         this.#publicKey = hexToPublicKey(feedIdToPublicKeyHex(feedId)); // The public key of the feed (which is determined by the feed ID)
         this.#localSubfeedSignedMessagesManager = new LocalSubfeedSignedMessagesManager(localFeedManager, feedId, subfeedHash, this.#publicKey)
-        this.#remoteSubfeedMessageDownloader = new RemoteSubfeedMessageDownloader(node, this)
+        this.#remoteSubfeedMessageDownloader = new RemoteSubfeedMessageDownloader(this.kacheryHubInterface, this)
     }
     async acquireLock() {
         return await this.#mutex.acquire()
@@ -52,19 +53,8 @@ class Subfeed {
             // Check whether we have the feed locally (may or may not be locally writeable)
             const existsLocally = await this.localFeedManager.feedExistsLocally(this.feedId)
             if (existsLocally) {
+                this.#isWriteable = true
                 await this.#localSubfeedSignedMessagesManager.initializeFromLocal()
-
-                // If this is a writeable feed, we also load the access rules into memory
-                this.#isWriteable = await this.localFeedManager.hasWriteableFeed(this.feedId)
-                if (this.#isWriteable) {
-                    const accessRules = await this.localFeedManager.getSubfeedAccessRules(this.feedId, this.subfeedHash)
-                    if (accessRules) {
-                        this.#accessRules = accessRules
-                    }
-                    else {
-                        this.#accessRules = null
-                    }
-                }
             }
             else {
                 this.#isWriteable = false
@@ -73,8 +63,6 @@ class Subfeed {
                 this.#localSubfeedSignedMessagesManager.initializeEmptyMessageList()
                 const messages = await this.localFeedManager.getSignedSubfeedMessages(this.feedId, this.subfeedHash)
                 assert(messages.length === 0)
-
-                this.#accessRules = null
 
                 // don't do this
                 // // Let's try to load messages from remote nodes on the network
@@ -136,10 +124,9 @@ class Subfeed {
         const messages = check()
         if (messages.length > 0) return messages
         if (durationMsecToNumber(waitMsec) > 0) {
-            const success = this.remoteFeedManager.subscribeToRemoteSubfeed(this.feedId, this.subfeedHash)
-            if (!success) {
-                return []
-            }
+            this.#subscribeToRemoteSubfeedCallbacks.forEach(cb => {
+                cb(this.feedId, this.subfeedHash)
+            })
             return new Promise((resolve, reject) => {
                 const listenerId = createListenerId()
                 let completed = false
@@ -269,22 +256,14 @@ class Subfeed {
             })
         })
     }
-    async getAccessRules(): Promise<SubfeedAccessRules | null> {
-        return this.#accessRules
-    }
-    async setAccessRules(accessRules: SubfeedAccessRules): Promise<void> {
-        if (!this.isWriteable()) {
-            /* istanbul ignore next */
-            throw Error(`Cannot set access rules for not writeable subfeed.`);
-        }
-        await this.localFeedManager.setSubfeedAccessRules(this.feedId, this.subfeedHash, accessRules)
-        this.#accessRules = accessRules
-    }
     onMessagesAdded(callback: () => void) {
         this.#onMessagesAddedCallbacks.push(callback)
     }
-    reportNumRemoteMessages(remoteNodeId: NodeId, numRemoteMessages: MessageCount) {
-        this.#remoteSubfeedMessageDownloader.reportNumRemoteMessages(remoteNodeId, numRemoteMessages)
+    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash) => void) {
+        this.#subscribeToRemoteSubfeedCallbacks.push(callback)
+    }
+    reportNumRemoteMessages(channelName: string, numRemoteMessages: MessageCount) {
+        this.#remoteSubfeedMessageDownloader.reportNumRemoteMessages(channelName, numRemoteMessages)
     }
 }
 

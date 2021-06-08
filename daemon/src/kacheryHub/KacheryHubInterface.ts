@@ -1,12 +1,13 @@
 import axios from "axios";
 import { getSignature } from "../common/types/crypto_util";
 import { NodeConfig } from "../common/types/kacheryHubTypes";
-import { ByteCount, elapsedSince, FileKey, fileKeyHash, JSONValue, KeyPair, NodeId, NodeLabel, nowTimestamp, Sha1Hash, Timestamp, urlString, UrlString, zeroTimestamp } from "../common/types/kacheryTypes";
-import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, RequestFilePubsubMessageBody, UploadFileStatusMessageBody } from "../common/types/pubsubMessages";
+import { ByteCount, elapsedSince, FeedId, FileKey, fileKeyHash, isJSONObject, isMessageCount, isSignedSubfeedMessage, JSONValue, KeyPair, maxDuration, MessageCount, NodeId, NodeLabel, nowTimestamp, Sha1Hash, SignedSubfeedMessage, SubfeedHash, urlString, UrlString, _validateObject } from "../common/types/kacheryTypes";
+import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, SubfeedMessageCountUpdateMessageBody, RequestSubfeedMessageBody, UploadFileStatusMessageBody, RequestFileMessageBody } from "../common/types/pubsubMessages";
 import { urlFromUri } from '../common/util';
+import GoogleObjectStorageClient from "./GoogleObjectStorageClient";
 import KacheryHubClient, { IncomingKacheryHubPubsubMessage } from "./KacheryHubClient";
 
-type IncomingFileRequestCallback = (args: {fileKey: FileKey, fromNodeId: NodeId, channelName: string, bucketUri: string}) => void
+type IncomingFileRequestCallback = (args: {fileKey: FileKey, fromNodeId: NodeId, channelName: string}) => void
 
 class KacheryHubInterface {
     #kacheryHubClient: KacheryHubClient
@@ -15,13 +16,18 @@ class KacheryHubInterface {
     #initializing = false
     #onInitializedCallbacks: (() => void)[] = []
     #incomingFileRequestCallbacks: IncomingFileRequestCallback[] = []
-    constructor(private opts: {keyPair: KeyPair, ownerId: string, nodeLabel: NodeLabel, kacheryHubUrl?: string}) {
+    #requestSubfeedCallbacks: ((channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) => void)[] = []
+    #subfeedMessageCountUpdateCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) => void)[] = []
+    constructor(private opts: {keyPair: KeyPair, ownerId: string, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
         const {keyPair, ownerId, nodeLabel, kacheryHubUrl} = opts
         this.#kacheryHubClient = new KacheryHubClient({keyPair, ownerId, nodeLabel, kacheryHubUrl})
         this.#kacheryHubClient.onIncomingPubsubMessage((x: IncomingKacheryHubPubsubMessage) => {
             this._handleKacheryHubPubsubMessage(x)
         })
         this.initialize()
+    }
+    client() {
+        return this.#kacheryHubClient
     }
     async initialize() {
         if (this.#initialized) return
@@ -89,7 +95,7 @@ class KacheryHubInterface {
             for (let cm of (nodeConfig.channelMemberships || [])) {
                 const au = cm.authorization
                 if ((au) && (au.permissions.requestFiles)) {
-                    const msg: RequestFilePubsubMessageBody = {
+                    const msg: RequestFileMessageBody = {
                         type: 'requestFile',
                         fileKey
                     }
@@ -127,8 +133,17 @@ class KacheryHubInterface {
             check()
         })
     }
+    onIncomingPubsubMessage(cb: (x: IncomingKacheryHubPubsubMessage) => void) {
+        return this.#kacheryHubClient.onIncomingPubsubMessage(cb)
+    }
     onIncomingFileRequest(callback: IncomingFileRequestCallback) {
         this.#incomingFileRequestCallbacks.push(callback)
+    }
+    onRequestSubfeed(cb: (channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) => void) {
+        this.#requestSubfeedCallbacks.push(cb)
+    }
+    onSubfeedMessageCountUpdate(callback: (feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) => void) {
+        this.#subfeedMessageCountUpdateCallbacks.push(callback)
     }
     async sendUploadFileStatusMessage(args: {channelName: string, fileKey: FileKey, status: 'started' | 'finished'}) {
         const {channelName, fileKey, status} = args
@@ -144,8 +159,110 @@ class KacheryHubInterface {
         await this.initialize()
         return this.#nodeConfig
     }
-    async createSignedUploadUrl(bucketUri: string, sha1: Sha1Hash, size: ByteCount) {
-        return this.#kacheryHubClient.createSignedUploadUrl(bucketUri, sha1, size)
+    async createSignedFileUploadUrl(a: {channelName: string, sha1: Sha1Hash, size: ByteCount}) {
+        return this.#kacheryHubClient.createSignedFileUploadUrl(a)
+    }
+    async createSignedSubfeedMessageUploadUrl(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumber?: number, subfeedJson?: boolean}) {
+        return this.#kacheryHubClient.createSignedSubfeedMessageUploadUrl(a)
+    }
+    async reportToChannelSubfeedMessagesAdded(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) {
+        await this.initialize()
+        const msg: SubfeedMessageCountUpdateMessageBody = {
+            type: 'subfeedMessageCountUpdate',
+            feedId,
+            subfeedHash,
+            messageCount: numMessages
+        }
+        this._publishMessageToPubsubChannel(channelName, `${channelName}-provideFeeds`, msg)
+    }
+    async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash) {
+        console.log('--- subscribe 2')
+        await this.initialize()
+        const nodeConfig = this.#nodeConfig
+        if (!nodeConfig) return
+        const channelNames: string[] = []
+        for (let channelMembership of (nodeConfig.channelMemberships || [])) {
+            if (channelMembership.roles.requestFeeds) {
+                if ((channelMembership.authorization) && (channelMembership.authorization.permissions.requestFeeds)) {
+                    channelNames.push(channelMembership.channelName)
+                }
+            }
+        }
+        console.log('--- sending request subfeed message to', channelNames)
+        const msg: RequestSubfeedMessageBody = {
+            type: 'requestSubfeed',
+            feedId,
+            subfeedHash
+        }
+        for (let channelName of channelNames) {
+            this._publishMessageToPubsubChannel(channelName, `${channelName}-requestFeeds`, msg)
+        }
+    }
+    async downloadSignedSubfeedMessages(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, start: MessageCount, end: MessageCount): Promise<SignedSubfeedMessage[]> {
+        await this.initialize()
+        const nodeConfig = this.#nodeConfig
+        if (!nodeConfig) {
+            throw Error('Problem initializing kacheryhub interface')
+        }
+        const channelMembership = (nodeConfig.channelMemberships || []).filter(cm => (cm.channelName === channelName))[0]
+        if (!channelMembership) {
+            throw Error(`Not a member of channel: ${channelName}`)
+        }
+        const channelBucketUri = channelMembership.channelBucketUri
+        if (!channelBucketUri) {
+            throw Error(`No bucket uri for channel: ${channelName}`)
+        }
+        const channelBucketName = bucketNameFromUri(channelBucketUri)
+        
+        const subfeedJson = await this.loadSubfeedJson(channelName, feedId, subfeedHash)
+        if (!subfeedJson) {
+            throw Error(`Unable to load subfeed.json for subfeed: ${feedId} ${subfeedHash} ${channelName}`)
+        }
+        if (Number(subfeedJson.messageCount) < Number(end)) {
+            throw Error(`Not enough messages for subfeed: ${feedId} ${subfeedHash} ${channelName}`)
+        }
+        const subfeedPath = getSubfeedPath(feedId, subfeedHash)
+
+        const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
+
+        const ret: SignedSubfeedMessage[] = []
+        for (let i = Number(start); i < Number(end); i++) {
+            const messagePath = `${subfeedPath}/${i}`
+            const messageJson = await client.getObjectJson(messagePath, {cacheBust: false})
+            if (!messageJson) {
+                throw Error(`Unable to download subfeed message ${messagePath} on ${channelBucketName}`)
+            }
+            if (!isSignedSubfeedMessage(messageJson)) {
+                throw Error(`Invalid subfeed message ${messagePath} on ${channelBucketName}`)
+            }
+            ret.push(messageJson)
+        }
+        return ret
+    }
+    async getChannelBucketName(channelName: string) {
+        await this.initialize()
+        const channelMembership = this._getChannelMembership(channelName)
+        if (!channelMembership) throw Error(`Not a member of channel: ${channelName}`)
+        const channelBucketUri = channelMembership.channelBucketUri
+        if (!channelBucketUri) {
+            throw Error(`No bucket uri for channel: ${channelName}`)
+        }
+        const channelBucketName = bucketNameFromUri(channelBucketUri)
+        return channelBucketName
+    }
+    async loadSubfeedJson(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) {
+        const channelBucketName = await this.getChannelBucketName(channelName)
+        const subfeedPath = getSubfeedPath(feedId, subfeedHash)
+        const subfeedJsonPath = `${subfeedPath}/subfeed.json`
+        const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
+        const subfeedJson = await client.getObjectJson(subfeedJsonPath, {cacheBust: true})
+        if (!subfeedJson) {
+            return null
+        }
+        if (!isSubfeedJson(subfeedJson)) {
+            throw Error(`Problem with subfeed.json for ${subfeedPath} on ${channelBucketName}`)
+        }
+        return subfeedJson
     }
     _getChannelMembership(channelName: string) {
         if (!this.#nodeConfig) return
@@ -177,7 +294,33 @@ class KacheryHubInterface {
             const bucketUri = cm.channelBucketUri
             if (!bucketUri) return
             this.#incomingFileRequestCallbacks.forEach(cb => {
-                cb({fileKey: msg.fileKey, channelName: x.channelName, fromNodeId: x.fromNodeId, bucketUri})
+                cb({fileKey: msg.fileKey, channelName: x.channelName, fromNodeId: x.fromNodeId})
+            })
+        }
+        else if (msg.type === 'requestSubfeed') {
+            if (x.pubsubChannelName !== `${x.channelName}-requestFeeds`) {
+                console.warn(`Unexpected pubsub channel for requestSubfeed: ${x.pubsubChannelName}`)
+                return
+            }
+            console.log('--- got request subfeed 1')
+            const nodeConfig = this.#nodeConfig
+            if (!nodeConfig) return
+            const {channelName} = x
+            const channelMembership = (nodeConfig.channelMemberships || []).filter(cm => (cm.channelName === channelName))[0]
+            if (!channelMembership) return
+            if ((channelMembership.roles.provideFeeds) && (channelMembership.authorization) && (channelMembership.authorization.permissions.provideFeeds)) {
+                this.#requestSubfeedCallbacks.forEach(cb => {
+                    cb(channelName, msg.feedId, msg.subfeedHash)
+                })
+            }
+        }
+        else if (msg.type === 'subfeedMessageCountUpdate') {
+            if (x.pubsubChannelName !== `${x.channelName}-provideFeeds`) {
+                console.warn(`Unexpected pubsub channel for subfeedMessageCountUpdate: ${x.pubsubChannelName}`)
+                return
+            }
+            this.#subfeedMessageCountUpdateCallbacks.forEach(cb => {
+                cb(msg.feedId, msg.subfeedHash, x.channelName, msg.messageCount)
             })
         }
     }
@@ -203,6 +346,14 @@ class KacheryHubInterface {
                     // if we are providing files, then we need to listen to requestFiles channel
                     subscribeToPubsubChannels.push(`${cm.channelName}-requestFiles`)
                 }
+                if ((au.permissions.requestFeeds) && (cm.roles.requestFeeds)) {
+                    // if we are requesting feeds, then we need to listen to provideFeeds channel
+                    subscribeToPubsubChannels.push(`${cm.channelName}-provideFeeds`)
+                }
+                if ((au.permissions.provideFeeds) && (cm.roles.provideFeeds)) {
+                    // if we are providing feeds, then we need to listen to requestFeeds channel
+                    subscribeToPubsubChannels.push(`${cm.channelName}-requestFeeds`)
+                }
                 // todo: think about how to handle case where authorization has changed, and so we need to subscribe to different pubsub channels
                 // for now, the channel is not recreated
                 this.#kacheryHubClient.createPubsubClientForChannel(cm.channelName, subscribeToPubsubChannels)
@@ -210,6 +361,22 @@ class KacheryHubInterface {
         }
         this.#nodeConfig = nodeConfig
     }
+}
+
+const getSubfeedPath = (feedId: FeedId, subfeedHash: SubfeedHash) => {
+    const f = feedId.toString()
+    const s = subfeedHash.toString()
+    const subfeedPath = `feeds/{f[0]}{f[1]}/{f[2]}{f[3]}/{f[4]}{f[5]}/{f}/subfeeds/{s[0]}{s[1]}/{s[2]}{s[3]}//{s[4]}{s[5]}/{s}`
+    return subfeedPath
+}
+
+type SubfeedJson = {
+    messageCount: MessageCount
+}
+const isSubfeedJson = (x: any): x is SubfeedJson => {
+    return _validateObject(x, {
+        messageCount: isMessageCount
+    }, {allowAdditionalFields: true})
 }
 
 const fileKeysMatch = (fileKey1: FileKey, fileKey2: FileKey) => {
@@ -224,6 +391,12 @@ const checkUrlExists = async (url: UrlString) => {
     catch(err) {
         return false
     }
+}
+
+const bucketNameFromUri = (bucketUri: string) => {
+    if (!bucketUri.startsWith('gs://')) throw Error(`Invalid bucket uri: ${bucketUri}`)
+    const a = bucketUri.split('/')
+    return a[2]
 }
 
 export default KacheryHubInterface

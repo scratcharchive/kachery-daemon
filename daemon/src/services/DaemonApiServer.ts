@@ -4,7 +4,7 @@ import JsonSocket from 'json-socket';
 import { Socket } from 'net';
 import { action } from '../common/action';
 import DataStreamy from '../common/DataStreamy';
-import { byteCount, ByteCount, DaemonVersion, DurationMsec, durationMsecToNumber, elapsedSince, ErrorMessage, FeedId, FeedName, FileKey, FindFileResult, isArrayOf, isBoolean, isByteCount, isDaemonVersion, isDurationMsec, isFeedId, isFeedName, isFileKey, isJSONObject, isJSONValue, isMessageCount, isNodeId, isNull, isNumber, isObjectOf, isOneOf, isSignedSubfeedMessage, isString, isSubfeedAccessRules, isSubfeedHash, isSubfeedMessage, isSubfeedPosition, isSubfeedWatches, isSubmittedSubfeedMessage, JSONObject, JSONValue, LocalFilePath, mapToObject, messageCount, MessageCount, NodeId, nowTimestamp, optional, Port, scaledDurationMsec, Sha1Hash, SignedSubfeedMessage, SubfeedAccessRules, SubfeedHash, SubfeedMessage, SubfeedPosition, SubfeedWatches, SubmittedSubfeedMessage, toSubfeedWatchesRAM, _validateObject } from '../common/types/kacheryTypes';
+import { byteCount, ByteCount, DaemonVersion, DurationMsec, durationMsecToNumber, elapsedSince, ErrorMessage, FeedId, FeedName, FileKey, isArrayOf, isBoolean, isByteCount, isDaemonVersion, isDurationMsec, isFeedId, isFeedName, isFileKey, isJSONObject, isJSONValue, isMessageCount, isNodeId, isNull, isNumber, isObjectOf, isOneOf, isSignedSubfeedMessage, isString, isSubfeedHash, isSubfeedMessage, isSubfeedPosition, isSubfeedWatches, isSubmittedSubfeedMessage, JSONObject, JSONValue, LocalFilePath, mapToObject, messageCount, MessageCount, NodeId, nowTimestamp, optional, Port, scaledDurationMsec, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, SubfeedWatches, SubmittedSubfeedMessage, toSubfeedWatchesRAM, _validateObject } from '../common/types/kacheryTypes';
 import { sleepMsec } from '../common/util';
 import daemonVersion from '../daemonVersion';
 import { HttpServerInterface } from '../external/ExternalInterface';
@@ -285,29 +285,6 @@ export const isFeedApiAppendMessagesResponse = (x: any): x is FeedApiAppendMessa
     });
 }
 
-export interface FeedApiSubmitMessageRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash,
-    message: SubmittedSubfeedMessage,
-    timeoutMsec: DurationMsec
-}
-export const isFeedApiSubmitMessageRequest = (x: any): x is FeedApiSubmitMessageRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash,
-        message: isSubmittedSubfeedMessage,
-        timeoutMsec: isDurationMsec
-    });
-}
-export interface FeedApiSubmitMessageResponse {
-    success: boolean
-}
-export const isFeedApiSubmitMessageResponse = (x: any): x is FeedApiSubmitMessageResponse => {
-    return _validateObject(x, {
-        success: isBoolean
-    })
-}
-
 export interface FeedApiGetNumLocalMessagesRequest {
     feedId: FeedId,
     subfeedHash: SubfeedHash
@@ -330,25 +307,21 @@ export const isFeedApiGetNumLocalMessagesResponse = (x: any): x is FeedApiGetNum
 }
 
 export interface FeedApiGetFeedInfoRequest {
-    feedId: FeedId,
-    timeoutMsec: DurationMsec
+    feedId: FeedId
 }
 export const isFeedApiGetFeedInfoRequest = (x: any): x is FeedApiGetFeedInfoRequest => {
     return _validateObject(x, {
-        feedId: isFeedId,
-        timeoutMsec: isDurationMsec
+        feedId: isFeedId
     });
 }
 export interface FeedApiGetFeedInfoResponse {
     success: boolean,
     isWriteable: boolean,
-    nodeId: NodeId
 }
 export const isFeedApiGetFeedInfoResponse = (x: any): x is FeedApiGetFeedInfoResponse => {
     return _validateObject(x, {
         success: isBoolean,
-        isWriteable: isBoolean,
-        nodeId: isNodeId
+        isWriteable: isBoolean
     })
 }
 
@@ -385,48 +358,6 @@ export const isFeedApiGetFeedIdResponse = (x: any): x is FeedApiGetFeedIdRespons
     return _validateObject(x, {
         success: isBoolean,
         feedId: isOneOf([isNull, isFeedId])
-    });
-}
-
-export interface FeedApiGetAccessRulesRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash
-}
-export const isFeedApiGetAccessRulesRequest = (x: any): x is FeedApiGetAccessRulesRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash
-    });
-}
-export interface FeedApiGetAccessRulesResponse {
-    success: boolean,
-    accessRules: SubfeedAccessRules | null
-}
-export const isFeedApiGetAccessRulesResponse = (x: any): x is FeedApiGetAccessRulesResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        accessRules: isOneOf([isNull, isSubfeedAccessRules])
-    });
-}
-
-export interface FeedApiSetAccessRulesRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash,
-    accessRules: SubfeedAccessRules
-}
-export const isFeedApiSetAccessRulesRequest = (x: any): x is FeedApiSetAccessRulesRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash,
-        accessRules: isSubfeedAccessRules
-    });
-}
-export interface FeedApiSetAccessRulesResponse {
-    success: boolean
-}
-export const isFeedApiSetAccessRulesResponse = (x: any): x is FeedApiSetAccessRulesResponse => {
-    return _validateObject(x, {
-        success: isBoolean
     });
 }
 
@@ -522,12 +453,6 @@ export default class DaemonApiServer {
             handler: async (reqData: JSONObject) => {return await this._handleFeedApiAppendMessages(reqData)},
             browserAccess: true
         },
-        // {
-        //     // /feed/submitMessage - submit messages to a remote live subfeed (must have permission)
-        //     path: '/feed/submitMessage',
-        //     handler: async (reqData: JSONObject) => {return await this._handleFeedApiSubmitMessage(reqData)},
-        //     browserAccess: false
-        // },
         {
             // /feed/getNumLocalMessages - get number of messages in a subfeed
             path: '/feed/getNumLocalMessages',
@@ -539,18 +464,6 @@ export default class DaemonApiServer {
             path: '/feed/getFeedInfo',
             handler: async (reqData: JSONObject) => {return await this._handleFeedApiGetFeedInfo(reqData)},
             browserAccess: true
-        },
-        {
-            // /feed/getAccessRules - get access rules for a local writeable subfeed
-            path: '/feed/getAccessRules',
-            handler: async (reqData: JSONObject) => {return await this._handleFeedApiGetAccessRules(reqData)},
-            browserAccess: true
-        },
-        {
-            // /feed/setAccessRules - set access rules for a local writeable subfeed
-            path: '/feed/setAccessRules',
-            handler: async (reqData: JSONObject) => {return await this._handleFeedApiSetAccessRules(reqData)},
-            browserAccess: false
         },
         {
             // /feed/watchForNewMessages - wait until new messages have been appended to a list of watched subfeeds
@@ -994,19 +907,6 @@ export default class DaemonApiServer {
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
         return response
     }
-    // // /feed/submitMessage - submit message to a remote live subfeed (must have permission)
-    // async _handleFeedApiSubmitMessage(reqData: JSONObject) {
-    //     /* istanbul ignore next */
-    //     if (!isFeedApiSubmitMessageRequest(reqData)) throw Error('Invalid request in _feedApiSubmitMessage');
-
-    //     const { feedId, subfeedHash, message, timeoutMsec } = reqData;
-
-    //     await this.#node.feedManager().submitMessage({feedId, subfeedHash, message, timeoutMsec});
-
-    //     const response: FeedApiSubmitMessageResponse = {success: true}
-    //     if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object');
-    //     return response
-    // }
     // /feed/getNumLocalMessages - get number of messages in a subfeed
     async _handleFeedApiGetNumLocalMessages(reqData: JSONObject) {
         /* istanbul ignore next */
@@ -1027,41 +927,10 @@ export default class DaemonApiServer {
         /* istanbul ignore next */
         if (!isFeedApiGetFeedInfoRequest(reqData)) throw Error('Invalid request in _feedApiGetFeedInfo');
 
-        const { feedId, timeoutMsec } = reqData;
-        const liveFeedInfo = await this.#node.feedManager().getFeedInfo({feedId, timeoutMsec});
+        const { feedId } = reqData;
+        const isWriteable = await this.#node.feedManager().hasWriteableFeed(feedId)
 
-        const response: FeedApiGetFeedInfoResponse = {success: true, isWriteable: liveFeedInfo.nodeId === this.#node.nodeId(), nodeId: liveFeedInfo.nodeId}
-        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object');
-        return response
-    }
-    // /feed/getAccessRules - get access rules for a local writeable subfeed
-    async _handleFeedApiGetAccessRules(reqData: JSONObject) {
-        /* istanbul ignore next */
-        if (!isFeedApiGetAccessRulesRequest(reqData)) throw Error('Invalid request in _feedApiGetAccessRules');
-
-        const { feedId, subfeedHash } = reqData;
-
-        const accessRules = await this.#node.feedManager().getAccessRules({feedId, subfeedHash});
-        let response: FeedApiGetAccessRulesResponse;
-        if (accessRules) {
-            response = {success: true, accessRules}
-        }
-        else {
-            response = {success: false, accessRules: null}
-        };
-        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object');
-        return response
-    }
-    // /feed/setAccessRules - set access rules for a local writeable subfeed
-    async _handleFeedApiSetAccessRules(reqData: JSONObject) {
-        /* istanbul ignore next */
-        if (!isFeedApiSetAccessRulesRequest(reqData)) throw Error('Invalid request in _feedApiSetAccessRules');
-
-        const { feedId, subfeedHash, accessRules } = reqData;
-
-        await this.#node.feedManager().setAccessRules({feedId, subfeedHash, accessRules})
-
-        const response: FeedApiSetAccessRulesResponse = {success: true}
+        const response: FeedApiGetFeedInfoResponse = {success: true, isWriteable: isWriteable}
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object');
         return response
     }
@@ -1072,6 +941,7 @@ export default class DaemonApiServer {
 
         const { subfeedWatches, waitMsec, maxNumMessages, signed } = reqData
 
+        console.log('--- w1')
         const messages = await this.#node.feedManager().watchForNewMessages({
             subfeedWatches: toSubfeedWatchesRAM(subfeedWatches), waitMsec, maxNumMessages: maxNumMessages || messageCount(0), signed: signed || false
         })

@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
-import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isUrlString, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, _validateObject } from './common/types/kacheryTypes';
+import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isString, isUrlString, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, _validateObject } from './common/types/kacheryTypes';
 import startDaemon from './startDaemon';
 
 // Thanks: https://stackoverflow.com/questions/4213351/make-node-js-not-exit-on-error
@@ -92,10 +92,14 @@ function main() {
           describe: 'The os group that has access to this daemon',
           type: 'string'
         })
+        y.option('kachery-hub-url', {
+          describe: 'Url for the kachery hub app',
+          type: 'string',
+          default: 'https://kacheryhub.org'
+        })
         return y
       },
       handler: async (argv) => {
-        const hostName = argv.host || null;
         const daemonApiPort = Number(process.env.KACHERY_DAEMON_PORT || 20431)
         const label = nodeLabel(argv.label as string)
         const ownerId = argv.owner as string
@@ -121,6 +125,10 @@ function main() {
 
         const externalInterface = realExternalInterface(localFilePath(storageDir))
 
+        const kacheryHubUrl = argv['kachery-hub-url'] || ''
+        if (!kacheryHubUrl) throw Error('kachery-hub-url not set')
+        if (!isString(kacheryHubUrl)) throw Error('kachery-hub-url is not a string')
+
         startDaemon({
           verbose,
           daemonApiPort,
@@ -135,7 +143,8 @@ function main() {
                 mirror: true,
                 kacheryHub: true,
                 clientAuth: true
-            }
+            },
+            kacheryHubUrl
           }
         })
       }

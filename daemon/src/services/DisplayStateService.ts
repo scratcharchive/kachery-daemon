@@ -20,7 +20,7 @@ export default class DisplayStateService {
         const lines: string[] = []
         lines.push('')
         lines.push('=======================================')
-        lines.push(`NODE ${this.#node.nodeId().slice(0, 6)} (${this.#node.nodeLabel()})`)
+        lines.push(`NODE ${this.#node.nodeId()} (${this.#node.nodeLabel()})`)
         if (this.opts.daemonApiPort)
             lines.push(`http://localhost:${this.opts.daemonApiPort}/stats?format=html`)
         lines.push('=======================================')

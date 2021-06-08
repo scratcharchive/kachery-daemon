@@ -1,6 +1,4 @@
-import axios from "axios"
 import { action } from "../common/action"
-import { getSignature } from "../common/types/crypto_util"
 import { scaledDurationMsec } from "../common/types/kacheryTypes"
 import { sleepMsec } from "../common/util"
 import KacheryDaemonNode from "../KacheryDaemonNode"
@@ -12,7 +10,7 @@ export default class KacheryHubService {
     #kacheryHubClient: KacheryHubClient
     constructor(node: KacheryDaemonNode, private opts: {}) {
         this.#node = node
-        this.#kacheryHubClient = new KacheryHubClient({keyPair: node.keyPair(), nodeLabel: node.nodeLabel(), ownerId: node.ownerId()})
+        this.#kacheryHubClient = node.kacheryHubInterface().client()
 
         this._start()
     }
@@ -22,7 +20,6 @@ export default class KacheryHubService {
     async _sendReportToKacheryHub() {
         if (!this.#node.ownerId()) return
         this.#kacheryHubClient.report()
-        const config = await this.#kacheryHubClient.fetchNodeConfig()
     }
     async _start() {
         const intervalMsec = scaledDurationMsec(1000 * 60 * 5)

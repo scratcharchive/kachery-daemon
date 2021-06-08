@@ -1,11 +1,11 @@
-import { FileKey, isEqualTo, isFileKey, isNodeId, isOneOf, isSignature, NodeId, Signature, _validateObject } from "./kacheryTypes";
+import { FeedId, FileKey, isEqualTo, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isSubfeedHash, MessageCount, NodeId, Signature, subfeedHash, SubfeedHash, _validateObject } from "./kacheryTypes";
 
-export type RequestFilePubsubMessageBody = {
+export type RequestFileMessageBody = {
     type: 'requestFile',
     fileKey: FileKey
 }
 
-export const isRequestFilePubsubMessageBody = (x: any): x is RequestFilePubsubMessageBody => {
+export const isRequestFileMessageBody = (x: any): x is RequestFileMessageBody => {
     return _validateObject(x, {
         type: isEqualTo('requestFile'),
         fileKey: isFileKey
@@ -26,12 +26,44 @@ export const isUploadFileStatusMessageBody = (x: any): x is UploadFileStatusMess
     })
 }
 
-export type KacheryHubPubsubMessageBody = RequestFilePubsubMessageBody | UploadFileStatusMessageBody
+export type SubfeedMessageCountUpdateMessageBody = {
+    type: 'subfeedMessageCountUpdate',
+    feedId: FeedId,
+    subfeedHash: SubfeedHash,
+    messageCount: MessageCount
+}
+
+export const isSubfeedMessageCountUpdateMessageBody = (x: any): x is SubfeedMessageCountUpdateMessageBody => {
+    return _validateObject(x, {
+        type: isEqualTo('subfeedMessageCountUpdate'),
+        feedId: isFeedId,
+        subfeedHash: isSubfeedHash,
+        messageCount: isMessageCount
+    })
+}
+
+export type RequestSubfeedMessageBody = {
+    type: 'requestSubfeed',
+    feedId: FeedId,
+    subfeedHash: SubfeedHash
+}
+
+export const isRequestSubfeedMessageBody = (x: any): x is RequestSubfeedMessageBody => {
+    return _validateObject(x, {
+        type: isEqualTo('requestSubfeed'),
+        feedId: isFeedId,
+        subfeedHash: isSubfeedHash
+    })
+}
+
+export type KacheryHubPubsubMessageBody = RequestFileMessageBody | UploadFileStatusMessageBody | SubfeedMessageCountUpdateMessageBody | RequestSubfeedMessageBody
 
 export const isKacheryHubPubsubMessageBody = (x: any): x is KacheryHubPubsubMessageBody => {
     return isOneOf([
-        isRequestFilePubsubMessageBody,
-        isUploadFileStatusMessageBody
+        isRequestFileMessageBody,
+        isUploadFileStatusMessageBody,
+        isSubfeedMessageCountUpdateMessageBody,
+        isRequestSubfeedMessageBody
     ])(x)
 }
 

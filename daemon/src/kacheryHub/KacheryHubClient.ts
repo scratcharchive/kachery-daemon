@@ -1,13 +1,13 @@
+import Ably from 'ably'
 import axios from "axios"
 import { getSignature, nodeIdToPublicKey, publicKeyHexToNodeId, publicKeyToHex, verifySignature } from "../common/types/crypto_util"
 import { isNodeConfig, isPubsubAuth, PubsubAuth } from "../common/types/kacheryHubTypes"
-import { CreateSignedUploadUrlRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedUploadUrlResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
-import { ByteCount, JSONValue, KeyPair, NodeId, NodeLabel, Sha1Hash } from "../common/types/kacheryTypes"
-import createPubsubClient, { PubsubClient, PubsubMessage } from "./createPubsubClient"
-import {isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData} from '../common/types/pubsubMessages'
-import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
-import Ably from 'ably'
+import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isGetNodeConfigResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
+import { ByteCount, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, Sha1Hash, SubfeedHash } from "../common/types/kacheryTypes"
+import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../common/types/pubsubMessages'
 import { randomAlphaString } from "../common/util"
+import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
+import createPubsubClient, { PubsubClient, PubsubMessage } from "./createPubsubClient"
 
 export type IncomingKacheryHubPubsubMessage = {
     channelName: string,
@@ -19,7 +19,7 @@ export type IncomingKacheryHubPubsubMessage = {
 class KacheryHubClient {
     #pubsubClients: {[key: string]: PubsubClient} = {}
     #incomingPubsubMessageCallbacks: {[key: string]: (x: IncomingKacheryHubPubsubMessage) => void} = {}
-    constructor(private opts: {keyPair: KeyPair, ownerId: string, nodeLabel: NodeLabel, kacheryHubUrl?: string}) {
+    constructor(private opts: {keyPair: KeyPair, ownerId: string, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
     }
     async fetchNodeConfig() {
         const reqBody: GetNodeConfigRequestBody = {
@@ -27,11 +27,15 @@ class KacheryHubClient {
             nodeId: this.nodeId,
             ownerId: this.opts.ownerId
         }
-        const nodeConfig = await this._sendRequest(reqBody)
-        if (!isNodeConfig(nodeConfig)) {
-            console.warn(nodeConfig)
-            throw Error('Invalid node config')
+        const resp = await this._sendRequest(reqBody)
+        if (!isGetNodeConfigResponse(resp)) {
+            throw Error('Invalid response in getNodeConfig')
         }
+        if (!resp.found) {
+            throw Error('Node not found for getNodeConfig')
+        }
+        const nodeConfig = resp.nodeConfig
+        if (!nodeConfig) throw Error('Unexpected, no nodeConfig')
         return nodeConfig
     }
     async fetchPubsubAuthForChannel(channelName: string) {
@@ -57,18 +61,37 @@ class KacheryHubClient {
         }
         await this._sendRequest(reqBody)
     }
-    async createSignedUploadUrl(bucketUri: string, sha1: Sha1Hash, size: ByteCount) {
-        const reqBody: CreateSignedUploadUrlRequestBody = {
-            type: 'createSignedUploadUrl',
+    async createSignedFileUploadUrl(a: {channelName: string, sha1: Sha1Hash, size: ByteCount}) {
+        const {channelName, sha1, size} = a
+        const reqBody: CreateSignedFileUploadUrlRequestBody = {
+            type: 'createSignedFileUploadUrl',
             nodeId: this.nodeId,
             ownerId: this.opts.ownerId,
-            bucketUri,
+            channelName,
             sha1,
             size
         }
         const x = await this._sendRequest(reqBody)
-        if (!isCreateSignedUploadUrlResponse(x)) {
-            throw Error('Unexpected response for createSignedUploadUrl')
+        if (!isCreateSignedFileUploadUrlResponse(x)) {
+            throw Error('Unexpected response for createSignedFileUploadUrl')
+        }
+        return x.signedUrl
+    }
+    async createSignedSubfeedMessageUploadUrl(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumber?: number, subfeedJson?: boolean}) {
+        const {channelName, feedId, subfeedHash, messageNumber, subfeedJson} = a
+        const reqBody: CreateSignedSubfeedMessageUploadUrlRequestBody = {
+            type: 'createSignedSubfeedMessageUploadUrl',
+            nodeId: this.nodeId,
+            ownerId: this.opts.ownerId,
+            channelName,
+            feedId,
+            subfeedHash,
+            messageNumber,
+            subfeedJson
+        }
+        const x = await this._sendRequest(reqBody)
+        if (!isCreateSignedSubfeedMessageUploadUrlResponse(x)) {
+            throw Error('Unexpected response for createSignedFileUploadUrl')
         }
         return x.signedUrl
     }
@@ -148,7 +171,7 @@ class KacheryHubClient {
         return x.data
     }
     _kacheryHubUrl() {
-        return this.opts.kacheryHubUrl || 'https://kacheryhub.org'
+        return this.opts.kacheryHubUrl
     }
 }
 

@@ -1,8 +1,8 @@
+import fs from 'fs'
 import DataStreamy from "../common/DataStreamy"
-import { Address, ByteCount, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedAccessRules, SubfeedHash, UrlPath, UrlString } from "../common/types/kacheryTypes"
+import { Address, ByteCount, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "../common/types/kacheryTypes"
 import MutableManager from "../mutables/MutableManager"
 import NodeStats from "../NodeStats"
-import fs from 'fs'
 
 export type HttpPostJsonFunction = ((address: Address, path: UrlPath, data: Object, opts: {timeoutMsec: DurationMsec}) => Promise<JSONObject>)
 export type HttpGetDownloadFunction = ((address: Address, path: UrlPath, stats: NodeStats, opts: {fromNodeId: NodeId | null}) => Promise<DataStreamy>)
@@ -66,9 +66,7 @@ export interface LocalFeedManagerInterface {
     getPrivateKeyForFeed: (feedId: FeedId) => Promise<PrivateKey | null>
     feedExistsLocally: (feedId: FeedId) => Promise<boolean>
     getSignedSubfeedMessages: (feedId: FeedId, subfeedHash: SubfeedHash) => Promise<SignedSubfeedMessage[]>
-    getSubfeedAccessRules: (feedId: FeedId, subfeedHash: SubfeedHash) => Promise<SubfeedAccessRules | null>
     appendSignedMessagesToSubfeed: (feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) => Promise<void> // synchronous???!!!
-    setSubfeedAccessRules: (feedId: FeedId, subfeedHash: SubfeedHash, accessRules: SubfeedAccessRules) => Promise<void> // synchronous???!!!
 }
 
 export type CreateLocalFeedManagerFunction = (mutableManager: MutableManager) => LocalFeedManagerInterface

@@ -2,7 +2,7 @@ import { Database, open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import { JSONStringifyDeterministic } from '../../common/types/crypto_util';
 import { sleepMsec } from '../../common/util';
-import { FeedId, isJSONObject, isSignedSubfeedMessage, isString, isSubfeedAccessRules, LocalFilePath, SignedSubfeedMessage, SubfeedAccessRules, SubfeedHash, unscaledDurationMsec } from "../../common/types/kacheryTypes";
+import { FeedId, isJSONObject, isSignedSubfeedMessage, isString, LocalFilePath, SignedSubfeedMessage, SubfeedHash, unscaledDurationMsec } from "../../common/types/kacheryTypes";
 import fs from 'fs'
 
 class LocalFeedsDatabase {
@@ -30,7 +30,6 @@ class LocalFeedsDatabase {
                 CREATE TABLE IF NOT EXISTS subfeeds (
                     feedId TEXT NOT NULL,
                     subfeedHash TEXT NOT NULL,
-                    accessRules TEXT,
                     PRIMARY KEY(feedId, subfeedHash),
                     FOREIGN KEY (feedId)
                     REFERENCES feeds (feedId) 
@@ -192,64 +191,6 @@ class LocalFeedsDatabase {
                 ret.push(m)
             }
             return ret
-        }
-        finally {
-            await this._closeDatabase()
-        }
-    }
-    async getSubfeedAccessRules(feedId: FeedId, subfeedHash: SubfeedHash): Promise<SubfeedAccessRules | null> {
-        await this._initialize()
-        const db = await this._openDatabase()
-        try {
-            const row = await db.get(`
-                SELECT accessRules FROM subfeeds WHERE feedId = $feedId AND subfeedHash = $subfeedHash
-            `, {
-                '$feedId': feedId.toString(),
-                '$subfeedHash': subfeedHash.toString()
-            })
-            if (row) {
-                if (!isJSONObject(row)) {
-                    throw Error(`Problem getting access rules of subfeed (*): ${feedId} ${subfeedHash}`)
-                }
-                if (!row.accessRules) return null
-                let accessRulesJson = row.accessRules
-                if (!isString(accessRulesJson)) {
-                    throw Error(`Problem getting access rules of subfeed: ${feedId} ${subfeedHash}`)
-                }
-                let accessRules
-                try {
-                    accessRules = JSON.parse(accessRulesJson)
-                }
-                catch(err) {
-                    throw Error(`Problem parsing access rules of subfeed: ${feedId} ${subfeedHash}`)
-                }
-                if (!isSubfeedAccessRules(accessRules)) {
-                    throw Error(`Problem in access rules of subfeed: ${feedId} ${subfeedHash}`)
-                }
-                return accessRules
-            }
-            else {
-                return null
-            }
-        }
-        finally {
-            await this._closeDatabase()
-        }
-    }
-    async setSubfeedAccessRules(feedId: FeedId, subfeedHash: SubfeedHash, accessRules: SubfeedAccessRules): Promise<void> {
-        await this._initialize()
-        const db = await this._openDatabase()
-        try {
-            await this._createFeedRowIfNeeded(db, feedId)
-            await db.run('BEGIN TRANSACTION')
-            await db.run(`
-                INSERT OR REPLACE INTO subfeeds (feedId, subfeedHash, accessRules) VALUES ($feedId, $subfeedHash, $accessRules)
-            `, {
-                '$feedId': feedId.toString(),
-                '$subfeedHash': subfeedHash.toString(),
-                '$accessRules': JSONStringifyDeterministic(accessRules)
-            })
-            await db.run('COMMIT')
         }
         finally {
             await this._closeDatabase()

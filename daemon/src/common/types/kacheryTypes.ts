@@ -636,29 +636,6 @@ export const submittedSubfeedMessageToSubfeedMessage = (x: SubmittedSubfeedMessa
     return x as any as SubfeedMessage;
 }
 
-// SubfeedAccessRule
-export interface SubfeedAccessRule {
-    nodeId: NodeId,
-    write: boolean
-}
-export const isSubfeedAccessRule = (x: any): x is SubfeedAccessRule => {
-    return _validateObject(x, {
-        nodeId: isNodeId,
-        write: isBoolean
-    })
-}
-
-// SubfeedAccessRules
-export interface SubfeedAccessRules {
-    rules: SubfeedAccessRule[]
-}
-export const isSubfeedAccessRules = (x: any): x is SubfeedAccessRules => {
-    return _validateObject(x, {
-        rules: isArrayOf(isSubfeedAccessRule)
-    })
-}
-
-
 // SubfeedWatchName
 export interface SubfeedWatchName extends String {
     __subfeedWatchName__: never; // phantom
