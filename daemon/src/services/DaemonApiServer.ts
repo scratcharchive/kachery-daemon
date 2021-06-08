@@ -941,7 +941,6 @@ export default class DaemonApiServer {
 
         const { subfeedWatches, waitMsec, maxNumMessages, signed } = reqData
 
-        console.log('--- w1')
         const messages = await this.#node.feedManager().watchForNewMessages({
             subfeedWatches: toSubfeedWatchesRAM(subfeedWatches), waitMsec, maxNumMessages: maxNumMessages || messageCount(0), signed: signed || false
         })

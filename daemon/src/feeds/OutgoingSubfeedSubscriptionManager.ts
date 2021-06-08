@@ -13,9 +13,7 @@ class OutgoingSubfeedSubscriptionManager {
             S = new OutgoingSubfeedSubscription(feedId, subfeedHash)
             this.#outgoingSubscriptions.set(subfeedCode, S)
             S.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
-                console.log('--- subscribing to remote subfeed 1')
                 this.#subscribeToRemoteSubfeedCallbacks.forEach(cb => {
-                    console.log('--- subscribing to remote subfeed 2')
                     cb(feedId, subfeedHash)
                 })
             })

@@ -20,7 +20,6 @@ class FeedManager {
         this.#outgoingSubfeedSubscriptionManager = new OutgoingSubfeedSubscriptionManager()
 
         this.#outgoingSubfeedSubscriptionManager.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
-            console.log('--- subscribe 1')
             this.kacheryHubInterface.subscribeToRemoteSubfeed(feedId, subfeedHash)
         })
     }
@@ -218,7 +217,6 @@ class FeedManager {
                 }
             })
             subfeed.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
-                console.log('--- onSubscribeToRemoteSubfeed')
                 this.#outgoingSubfeedSubscriptionManager.createOrRenewOutgoingSubscription(feedId, subfeedHash)
             })
             // Store in memory for future access (the order is important here, see waitUntilInitialized above)

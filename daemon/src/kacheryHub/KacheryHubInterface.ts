@@ -176,7 +176,6 @@ class KacheryHubInterface {
         this._publishMessageToPubsubChannel(channelName, `${channelName}-provideFeeds`, msg)
     }
     async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash) {
-        console.log('--- subscribe 2')
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return
@@ -188,7 +187,6 @@ class KacheryHubInterface {
                 }
             }
         }
-        console.log('--- sending request subfeed message to', channelNames)
         const msg: RequestSubfeedMessageBody = {
             type: 'requestSubfeed',
             feedId,
@@ -302,7 +300,6 @@ class KacheryHubInterface {
                 console.warn(`Unexpected pubsub channel for requestSubfeed: ${x.pubsubChannelName}`)
                 return
             }
-            console.log('--- got request subfeed 1')
             const nodeConfig = this.#nodeConfig
             if (!nodeConfig) return
             const {channelName} = x
