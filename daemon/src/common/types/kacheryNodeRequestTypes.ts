@@ -1,5 +1,5 @@
 import { isNodeConfig, NodeConfig } from "./kacheryHubTypes"
-import { ByteCount, FeedId, isBoolean, isByteCount, isEqualTo, isFeedId, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isString, isSubfeedHash, isUrlString, NodeId, NodeLabel, optional, Sha1Hash, Signature, SubfeedHash, UrlString, _validateObject } from "./kacheryTypes"
+import { ByteCount, FeedId, isArrayOf, isBoolean, isByteCount, isEqualTo, isFeedId, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isString, isSubfeedHash, isUrlString, NodeId, NodeLabel, optional, Sha1Hash, Signature, SubfeedHash, UrlString, _validateObject } from "./kacheryTypes"
 
 export type ReportRequestBody = {
     type: 'report'
@@ -96,8 +96,7 @@ export type CreateSignedSubfeedMessageUploadUrlRequestBody = {
     channelName: string
     feedId: FeedId
     subfeedHash: SubfeedHash
-    messageNumber?: number
-    subfeedJson?: boolean
+    messageNumberRange: [number, number]
 }
 
 export const isCreateSignedSubfeedMessageUploadUrlRequestBody = (x: any): x is CreateSignedSubfeedMessageUploadUrlRequestBody => {
@@ -108,18 +107,17 @@ export const isCreateSignedSubfeedMessageUploadUrlRequestBody = (x: any): x is C
         channelName: isString,
         feedId: isFeedId,
         subfeedHash: isSubfeedHash,
-        messageNumber: optional(isNumber),
-        subfeedJson: optional(isBoolean)
+        messageNumberRange: isArrayOf(isNumber)
     })
 }
 
 export type CreateSignedSubfeedMessageUploadUrlResponse = {
-    signedUrl: UrlString
+    signedUrls: {[key: string]: UrlString}
 }
 
 export const isCreateSignedSubfeedMessageUploadUrlResponse = (x: any): x is CreateSignedSubfeedMessageUploadUrlResponse => {
     return _validateObject(x, {
-        signedUrl: isUrlString
+        signedUrls: (a => (true))
     })
 }
 

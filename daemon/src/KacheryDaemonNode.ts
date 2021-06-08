@@ -57,8 +57,8 @@ class KacheryDaemonNode {
         this.#kacheryHubInterface.onIncomingFileRequest(({fileKey, channelName, fromNodeId}) => {
             this._handleIncomingFileRequest({fileKey, channelName, fromNodeId})
         })
-        this.#kacheryHubInterface.onRequestSubfeed((channelName, feedId, subfeedHash) => {
-            this.#feedManager.createOrRenewIncomingSubfeedSubscription(channelName, feedId, subfeedHash)
+        this.#kacheryHubInterface.onRequestSubfeed((channelName, feedId, subfeedHash, position) => {
+            this.#feedManager.createOrRenewIncomingSubfeedSubscription(channelName, feedId, subfeedHash, position)
         })
         this.#kacheryHubInterface.onSubfeedMessageCountUpdate((feedId, subfeedHash, channelName, messageCount) => {
             this.#feedManager.reportSubfeedMessageCountUpdate(feedId, subfeedHash, channelName, messageCount)

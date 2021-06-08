@@ -59,6 +59,17 @@ export type NodeChannelAuthorization = {
         provideFeeds?: boolean
         provideTaskResults?: boolean
     }
+    roles?: { // obtained by cross-referencing with the node
+        downloadFiles?: boolean
+        downloadFeeds?: boolean
+        downloadTaskResults?: boolean
+        requestFiles?: boolean
+        requestFeeds?: boolean
+        requestTaskResults?: boolean
+        provideFiles?: boolean
+        provideFeeds?: boolean
+        provideTaskResults?: boolean
+    }
 }
 
 export const isNodeChannelAuthorization = (x: any): x is NodeChannelAuthorization => {
@@ -66,6 +77,14 @@ export const isNodeChannelAuthorization = (x: any): x is NodeChannelAuthorizatio
         channelName: isString,
         nodeId: isNodeId,
         permissions: {
+            requestFiles: optional(isBoolean),
+            requestFeeds: optional(isBoolean),
+            requestTaskResults: optional(isBoolean),
+            provideFiles: optional(isBoolean),
+            provideFeeds: optional(isBoolean),
+            provideTaskResults: optional(isBoolean),
+        },
+        roles: optional((a: any) => _validateObject(a, {
             downloadFiles: optional(isBoolean),
             downloadFeeds: optional(isBoolean),
             downloadTaskResults: optional(isBoolean),
@@ -75,8 +94,8 @@ export const isNodeChannelAuthorization = (x: any): x is NodeChannelAuthorizatio
             provideFiles: optional(isBoolean),
             provideFeeds: optional(isBoolean),
             provideTaskResults: optional(isBoolean)
-        }
-    })
+        }, {allowAdditionalFields: true}))
+    }, {allowAdditionalFields: true})
 }
 
 export type ChannelConfig = {
@@ -137,7 +156,7 @@ const isNodeChannelMembership = (x: any): x is NodeChannelMembership => {
     return _validateObject(x, {
         nodeId: isNodeId,
         channelName: isString,
-        roles: {
+        roles: (a: any) => (_validateObject(a, {
             downloadFiles: optional(isBoolean),
             downloadFeeds: optional(isBoolean),
             downloadTaskResults: optional(isBoolean),
@@ -146,8 +165,8 @@ const isNodeChannelMembership = (x: any): x is NodeChannelMembership => {
             requestTaskResults: optional(isBoolean),
             provideFiles: optional(isBoolean),
             provideFeeds: optional(isBoolean),
-            provideTaskResults: optional(isBoolean)
-        },
+            provideTaskResults: optional(isBoolean),
+        }, {allowAdditionalFields: true})),
         channelBucketUri: optional(isString),
         authorization: optional(isNodeChannelAuthorization)
     })

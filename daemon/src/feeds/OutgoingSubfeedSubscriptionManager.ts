@@ -1,29 +1,29 @@
 import GarbageMap from "../common/GarbageMap"
-import { DurationMsec, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../common/types/kacheryTypes"
+import { DurationMsec, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, SubfeedPosition, zeroTimestamp } from "../common/types/kacheryTypes"
 
 class OutgoingSubfeedSubscriptionManager {
     #outgoingSubscriptions = new GarbageMap<string, OutgoingSubfeedSubscription>(scaledDurationMsec(300 * 60 * 1000))
-    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash) => void)[] = []
+    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void)[] = []
     constructor() {
     }
-    async createOrRenewOutgoingSubscription(feedId: FeedId, subfeedHash: SubfeedHash): Promise<void> {
+    async createOrRenewOutgoingSubscription(feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition): Promise<void> {
         const subfeedCode = makeSubscriptionCode(feedId, subfeedHash)
         let S = this.#outgoingSubscriptions.get(subfeedCode)
         if (!S) {
             S = new OutgoingSubfeedSubscription(feedId, subfeedHash)
             this.#outgoingSubscriptions.set(subfeedCode, S)
-            S.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
+            S.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => {
                 this.#subscribeToRemoteSubfeedCallbacks.forEach(cb => {
-                    cb(feedId, subfeedHash)
+                    cb(feedId, subfeedHash, position)
                 })
             })
         }
-        await S.renew()
+        await S.renew(position)
         setTimeout(() => {
             this._checkRemove(feedId, subfeedHash)
         }, durationMsecToNumber(S.durationMsec()) +  durationMsecToNumber(scaledDurationMsec(5000)))
     }
-    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash) => void) {
+    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void) {
         this.#subscribeToRemoteSubfeedCallbacks.push(callback)
     }
     hasSubfeedSubscription(feedId: FeedId, subfeedHash: SubfeedHash) {
@@ -48,16 +48,16 @@ const makeSubscriptionCode = (feedId: FeedId, subfeedHash: SubfeedHash) => {
 class OutgoingSubfeedSubscription {
     #lastRenewTimestamp = zeroTimestamp()
     #lastRenewDurationMsec: DurationMsec = scaledDurationMsec(1000 * 60)
-    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash) => void)[] = []
+    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void)[] = []
     constructor(private feedId: FeedId, private subfeedHash: SubfeedHash) {
     }
-    async renew(): Promise<void> {
+    async renew(position: SubfeedPosition): Promise<void> {
         if (elapsedSince(this.#lastRenewTimestamp) < durationMsecToNumber(this.durationMsec()) / 2) {
             return
         }
         this.#lastRenewTimestamp = nowTimestamp()
         this.#subscribeToRemoteSubfeedCallbacks.forEach(cb => {
-            cb(this.feedId, this.subfeedHash)
+            cb(this.feedId, this.subfeedHash, position)
         })
     }
     elapsedMsecSinceLastRenew() {
@@ -66,7 +66,7 @@ class OutgoingSubfeedSubscription {
     durationMsec() {
         return this.#lastRenewDurationMsec
     }
-    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash) => void) {
+    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void) {
         this.#subscribeToRemoteSubfeedCallbacks.push(callback)
     }
 }

@@ -1,4 +1,4 @@
-import { FeedId, FileKey, isEqualTo, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isSubfeedHash, MessageCount, NodeId, Signature, subfeedHash, SubfeedHash, _validateObject } from "./kacheryTypes";
+import { FeedId, FileKey, isEqualTo, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isSubfeedHash, isSubfeedPosition, MessageCount, NodeId, Signature, subfeedHash, SubfeedHash, SubfeedPosition, _validateObject } from "./kacheryTypes";
 
 export type RequestFileMessageBody = {
     type: 'requestFile',
@@ -45,14 +45,16 @@ export const isSubfeedMessageCountUpdateMessageBody = (x: any): x is SubfeedMess
 export type RequestSubfeedMessageBody = {
     type: 'requestSubfeed',
     feedId: FeedId,
-    subfeedHash: SubfeedHash
+    subfeedHash: SubfeedHash,
+    position: SubfeedPosition
 }
 
 export const isRequestSubfeedMessageBody = (x: any): x is RequestSubfeedMessageBody => {
     return _validateObject(x, {
         type: isEqualTo('requestSubfeed'),
         feedId: isFeedId,
-        subfeedHash: isSubfeedHash
+        subfeedHash: isSubfeedHash,
+        position: isSubfeedPosition
     })
 }
 

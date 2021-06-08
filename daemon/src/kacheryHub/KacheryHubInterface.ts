@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getSignature } from "../common/types/crypto_util";
 import { NodeConfig } from "../common/types/kacheryHubTypes";
-import { ByteCount, elapsedSince, FeedId, FileKey, fileKeyHash, isJSONObject, isMessageCount, isSignedSubfeedMessage, JSONValue, KeyPair, maxDuration, MessageCount, NodeId, NodeLabel, nowTimestamp, Sha1Hash, SignedSubfeedMessage, SubfeedHash, urlString, UrlString, _validateObject } from "../common/types/kacheryTypes";
+import { ByteCount, elapsedSince, FeedId, FileKey, fileKeyHash, isJSONObject, isMessageCount, isSignedSubfeedMessage, JSONValue, KeyPair, maxDuration, MessageCount, NodeId, NodeLabel, nowTimestamp, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, urlString, UrlString, _validateObject } from "../common/types/kacheryTypes";
 import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, SubfeedMessageCountUpdateMessageBody, RequestSubfeedMessageBody, UploadFileStatusMessageBody, RequestFileMessageBody } from "../common/types/pubsubMessages";
 import { urlFromUri } from '../common/util';
 import GoogleObjectStorageClient from "./GoogleObjectStorageClient";
@@ -16,7 +16,7 @@ class KacheryHubInterface {
     #initializing = false
     #onInitializedCallbacks: (() => void)[] = []
     #incomingFileRequestCallbacks: IncomingFileRequestCallback[] = []
-    #requestSubfeedCallbacks: ((channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) => void)[] = []
+    #requestSubfeedCallbacks: ((channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void)[] = []
     #subfeedMessageCountUpdateCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) => void)[] = []
     constructor(private opts: {keyPair: KeyPair, ownerId: string, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
         const {keyPair, ownerId, nodeLabel, kacheryHubUrl} = opts
@@ -139,7 +139,7 @@ class KacheryHubInterface {
     onIncomingFileRequest(callback: IncomingFileRequestCallback) {
         this.#incomingFileRequestCallbacks.push(callback)
     }
-    onRequestSubfeed(cb: (channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) => void) {
+    onRequestSubfeed(cb: (channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void) {
         this.#requestSubfeedCallbacks.push(cb)
     }
     onSubfeedMessageCountUpdate(callback: (feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) => void) {
@@ -162,8 +162,8 @@ class KacheryHubInterface {
     async createSignedFileUploadUrl(a: {channelName: string, sha1: Sha1Hash, size: ByteCount}) {
         return this.#kacheryHubClient.createSignedFileUploadUrl(a)
     }
-    async createSignedSubfeedMessageUploadUrl(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumber?: number, subfeedJson?: boolean}) {
-        return this.#kacheryHubClient.createSignedSubfeedMessageUploadUrl(a)
+    async createSignedSubfeedMessageUploadUrls(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
+        return this.#kacheryHubClient.createSignedSubfeedMessageUploadUrls(a)
     }
     async reportToChannelSubfeedMessagesAdded(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) {
         await this.initialize()
@@ -175,7 +175,7 @@ class KacheryHubInterface {
         }
         this._publishMessageToPubsubChannel(channelName, `${channelName}-provideFeeds`, msg)
     }
-    async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash) {
+    async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return
@@ -190,7 +190,8 @@ class KacheryHubInterface {
         const msg: RequestSubfeedMessageBody = {
             type: 'requestSubfeed',
             feedId,
-            subfeedHash
+            subfeedHash,
+            position
         }
         for (let channelName of channelNames) {
             this._publishMessageToPubsubChannel(channelName, `${channelName}-requestFeeds`, msg)
@@ -307,7 +308,7 @@ class KacheryHubInterface {
             if (!channelMembership) return
             if ((channelMembership.roles.provideFeeds) && (channelMembership.authorization) && (channelMembership.authorization.permissions.provideFeeds)) {
                 this.#requestSubfeedCallbacks.forEach(cb => {
-                    cb(channelName, msg.feedId, msg.subfeedHash)
+                    cb(channelName, msg.feedId, msg.subfeedHash, msg.position)
                 })
             }
         }

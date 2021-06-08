@@ -4,7 +4,7 @@ import { nextTick } from 'process';
 import { feedIdToPublicKeyHex, getSignatureJson, hexToPublicKey, verifySignatureJson } from '../common/types/crypto_util';
 import { randomAlphaString } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
+import { DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
 import LocalSubfeedSignedMessagesManager from './LocalSubfeedSignedMessagesManager';
 import KacheryDaemonNode from '../KacheryDaemonNode';
 import RemoteSubfeedMessageDownloader from './RemoteSubfeedMessageDownloader';
@@ -28,10 +28,12 @@ class Subfeed {
 
     #onMessagesAddedCallbacks: (() => void)[] = []
 
-    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash) => void)[] = []
+    #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void)[] = []
 
     #mutex = new Mutex()
     #remoteSubfeedMessageDownloader: RemoteSubfeedMessageDownloader
+
+    #triggerScheduled = false
 
     constructor(private kacheryHubInterface: KacheryHubInterface, private feedId: FeedId, private subfeedHash: SubfeedHash, private localFeedManager: LocalFeedManagerInterface) {
         this.#publicKey = hexToPublicKey(feedIdToPublicKeyHex(feedId)); // The public key of the feed (which is determined by the feed ID)
@@ -125,7 +127,7 @@ class Subfeed {
         if (messages.length > 0) return messages
         if (durationMsecToNumber(waitMsec) > 0) {
             this.#subscribeToRemoteSubfeedCallbacks.forEach(cb => {
-                cb(this.feedId, this.subfeedHash)
+                cb(this.feedId, this.subfeedHash, subfeedPosition(Number(this.getNumLocalMessages())))
             })
             return new Promise((resolve, reject) => {
                 const listenerId = createListenerId()
@@ -245,8 +247,13 @@ class Subfeed {
         }
         // CHAIN:append_messages:step(5)
         await this.#localSubfeedSignedMessagesManager.appendSignedMessages(signedMessagesToAppend);
-        nextTick(() => {
-            // CHAIN:get_remote_messages:step(17)
+        this._scheduleTriggerNewMessageCallbacks()
+    }
+    _scheduleTriggerNewMessageCallbacks() {
+        if (this.#triggerScheduled) return
+        this.#triggerScheduled = true
+        setTimeout(() => {
+            this.#triggerScheduled = false
             this.#newMessageListeners.forEach((listener) => {
                 listener()
             })
@@ -254,12 +261,12 @@ class Subfeed {
                 // CHAIN:append_messages:step(9)
                 cb()
             })
-        })
+        }, 100)
     }
     onMessagesAdded(callback: () => void) {
         this.#onMessagesAddedCallbacks.push(callback)
     }
-    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash) => void) {
+    onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void) {
         this.#subscribeToRemoteSubfeedCallbacks.push(callback)
     }
     reportNumRemoteMessages(channelName: string, numRemoteMessages: MessageCount) {

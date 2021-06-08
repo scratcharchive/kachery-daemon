@@ -77,8 +77,8 @@ class KacheryHubClient {
         }
         return x.signedUrl
     }
-    async createSignedSubfeedMessageUploadUrl(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumber?: number, subfeedJson?: boolean}) {
-        const {channelName, feedId, subfeedHash, messageNumber, subfeedJson} = a
+    async createSignedSubfeedMessageUploadUrls(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
+        const {channelName, feedId, subfeedHash, messageNumberRange} = a
         const reqBody: CreateSignedSubfeedMessageUploadUrlRequestBody = {
             type: 'createSignedSubfeedMessageUploadUrl',
             nodeId: this.nodeId,
@@ -86,14 +86,13 @@ class KacheryHubClient {
             channelName,
             feedId,
             subfeedHash,
-            messageNumber,
-            subfeedJson
+            messageNumberRange
         }
         const x = await this._sendRequest(reqBody)
         if (!isCreateSignedSubfeedMessageUploadUrlResponse(x)) {
             throw Error('Unexpected response for createSignedFileUploadUrl')
         }
-        return x.signedUrl
+        return x.signedUrls
     }
     public get nodeId() {
         return publicKeyHexToNodeId(publicKeyToHex(this.opts.keyPair.publicKey))

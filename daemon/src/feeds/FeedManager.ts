@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { timeStamp } from 'console';
 import GarbageMap from '../common/GarbageMap';
-import { DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../common/types/kacheryTypes';
+import { DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../common/types/kacheryTypes';
 import { sleepMsec } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
 import KacheryDaemonNode from '../KacheryDaemonNode';
@@ -19,8 +19,8 @@ class FeedManager {
         this.#incomingSubfeedSubscriptionManager = new IncomingSubfeedSubscriptionManager()
         this.#outgoingSubfeedSubscriptionManager = new OutgoingSubfeedSubscriptionManager()
 
-        this.#outgoingSubfeedSubscriptionManager.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
-            this.kacheryHubInterface.subscribeToRemoteSubfeed(feedId, subfeedHash)
+        this.#outgoingSubfeedSubscriptionManager.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => {
+            this.kacheryHubInterface.subscribeToRemoteSubfeed(feedId, subfeedHash, position)
         })
     }
     async createFeed({ feedName } : {feedName: FeedName | null }) {
@@ -177,13 +177,15 @@ class FeedManager {
             }, durationMsecToNumber(waitMsec));
         });
     }
-    async createOrRenewIncomingSubfeedSubscription(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash): Promise<MessageCount> {
+    async createOrRenewIncomingSubfeedSubscription(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         if (!subfeed.isWriteable()) {
             throw Error('Cannot have an incoming subscription to a subfeed that is not writeable')
         }
         this.#incomingSubfeedSubscriptionManager.createOrRenewIncomingSubscription(channelName, feedId, subfeedHash)
-        return subfeed.getNumLocalMessages()
+        if (Number(position) < Number(subfeed.getNumLocalMessages())) {
+            this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
+        }
     }
     async reportSubfeedMessageCountUpdate(feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) {
         if (this.#outgoingSubfeedSubscriptionManager.hasSubfeedSubscription(feedId, subfeedHash)) {
@@ -211,13 +213,10 @@ class FeedManager {
             subfeed = new Subfeed(this.kacheryHubInterface, feedId, subfeedHash, this.localFeedManager)
             subfeed.onMessagesAdded(() => {
                 if (!subfeed) throw Error('Unexpected')
-                const channelNames = this.#incomingSubfeedSubscriptionManager.getChannelsSubscribingToSubfeed(feedId, subfeedHash)
-                for (let channelName of channelNames) {
-                    this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
-                }
+                this._uploadSubfeedMessagesToSubscribedChannels(feedId, subfeedHash)
             })
-            subfeed.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash) => {
-                this.#outgoingSubfeedSubscriptionManager.createOrRenewOutgoingSubscription(feedId, subfeedHash)
+            subfeed.onSubscribeToRemoteSubfeed((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => {
+                this.#outgoingSubfeedSubscriptionManager.createOrRenewOutgoingSubscription(feedId, subfeedHash, position)
             })
             // Store in memory for future access (the order is important here, see waitUntilInitialized above)
             this.#subfeeds.set(k, subfeed)
@@ -240,6 +239,12 @@ class FeedManager {
         // Return the subfeed instance
         return subfeed
     }
+    async _uploadSubfeedMessagesToSubscribedChannels(feedId: FeedId, subfeedHash: SubfeedHash) {
+        const channelNames = this.#incomingSubfeedSubscriptionManager.getChannelsSubscribingToSubfeed(feedId, subfeedHash)
+        for (let channelName of channelNames) {
+            await this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
+        }
+    }
     async _uploadSubfeedMessagesToChannel(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) {
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         const subfeedJson = await this.kacheryHubInterface.loadSubfeedJson(channelName, feedId, subfeedHash)
@@ -251,9 +256,9 @@ class FeedManager {
         const i1 = Number(subfeedJson ? subfeedJson.messageCount : 0)
         const i2 = Number(subfeed.getNumLocalMessages())
         const signedMessages = subfeed.getLocalSignedMessages({position: subfeedPosition(i1), numMessages: messageCount(i2 - i1)})
+        const uploadUrls = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrls({channelName, feedId, subfeedHash, messageNumberRange: [i1, i2]})
         for (let i = i1; i < i2; i++) {
-            const messageNumber = i
-            const uploadUrl = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrl({channelName, feedId, subfeedHash, messageNumber})
+            const uploadUrl = uploadUrls[i + '']
             const signedMessage = signedMessages[i - i1]
             const signedMessageContent = new TextEncoder().encode(JSON.stringify(signedMessage))
             const resp = await axios.put(uploadUrl.toString(), signedMessageContent, {
@@ -278,7 +283,7 @@ class FeedManager {
             }
             if (Number(subfeedJson2.messageCount) < i2) {
                 subfeedJson2.messageCount = messageCount(i2)
-                const uploadUrl = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrl({channelName, feedId, subfeedHash, subfeedJson: true})
+                const uploadUrl = uploadUrls['subfeedJson']
                 const subfeedJsonContent = new TextEncoder().encode(JSON.stringify(subfeedJson2))
                 const resp = await axios.put(uploadUrl.toString(), subfeedJsonContent, {
                     headers: {
