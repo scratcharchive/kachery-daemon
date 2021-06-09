@@ -1,10 +1,10 @@
 import fs from 'fs'
 import { createKeyPair, getSignature, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyHexToNodeId, publicKeyToHex, verifySignature } from './common/types/crypto_util'
-import { ByteCount, FileKey, fileKeyHash, isArrayOf, isKeyPair, isString, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeId, NodeLabel, Sha1Hash, subfeedHash, urlString, UrlString } from './common/types/kacheryTypes'
+import { ByteCount, ChannelName, FileKey, isArrayOf, isKeyPair, isString, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeId, NodeLabel, Sha1Hash, UserId } from './common/types/kacheryTypes'
 import { isReadableByOthers } from './common/util'
 import ExternalInterface, { KacheryStorageManagerInterface } from './external/ExternalInterface'
 import FeedManager from './feeds/FeedManager'
-import FileUploader, {SignedFileUploadUrlCallback} from './FileUploader/FileUploader'
+import FileUploader, { SignedFileUploadUrlCallback } from './FileUploader/FileUploader'
 import { getStats, GetStatsOpts } from './getStats'
 import KacheryHubInterface from './kacheryHub/KacheryHubInterface'
 import MutableManager from './mutables/MutableManager'
@@ -28,7 +28,7 @@ class KacheryDaemonNode {
     constructor(private p: {
         verbose: number,
         label: NodeLabel,
-        ownerId: string,
+        ownerId?: UserId,
         externalInterface: ExternalInterface,
         opts: KacheryDaemonNodeOpts
     }) {
@@ -52,7 +52,7 @@ class KacheryDaemonNode {
             }
         })
 
-        this.#kacheryHubInterface = new KacheryHubInterface({keyPair: this.#keyPair, ownerId: p.ownerId, nodeLabel: p.label, kacheryHubUrl: p.opts.kacheryHubUrl})
+        this.#kacheryHubInterface = new KacheryHubInterface({keyPair: this.#keyPair, ownerId: p.ownerId, nodeLabel: p.label, kacheryHubUrl: p.opts.kacheryHubUrl, nodeStats: this.#stats})
 
         this.#kacheryHubInterface.onIncomingFileRequest(({fileKey, channelName, fromNodeId}) => {
             this._handleIncomingFileRequest({fileKey, channelName, fromNodeId})
@@ -64,15 +64,15 @@ class KacheryDaemonNode {
             this.#feedManager.reportSubfeedMessageCountUpdate(feedId, subfeedHash, channelName, messageCount)
         })
 
-        const signedFileUploadUrlCallback: SignedFileUploadUrlCallback = async (a: {channelName: string, sha1: Sha1Hash, size: ByteCount}) => {
+        const signedFileUploadUrlCallback: SignedFileUploadUrlCallback = async (a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) => {
             return await this.#kacheryHubInterface.createSignedFileUploadUrl(a)
         }
 
-        this.#fileUploader = new FileUploader(signedFileUploadUrlCallback, this.#kacheryStorageManager)
+        this.#fileUploader = new FileUploader(signedFileUploadUrlCallback, this.#kacheryStorageManager, this.#stats)
 
         // The feed manager -- each feed is a collection of append-only logs
         const localFeedManager = this.p.externalInterface.createLocalFeedManager(this.#mutableManager)
-        this.#feedManager = new FeedManager(this.#kacheryHubInterface, localFeedManager)
+        this.#feedManager = new FeedManager(this.#kacheryHubInterface, localFeedManager, this.#stats)
     }
     nodeId() {
         return this.#nodeId
@@ -133,7 +133,7 @@ class KacheryDaemonNode {
             }
         }
     }
-    async _handleIncomingFileRequest(args: {fileKey: FileKey, channelName: string, fromNodeId: NodeId}) {
+    async _handleIncomingFileRequest(args: {fileKey: FileKey, channelName: ChannelName, fromNodeId: NodeId}) {
         const x = await this.#kacheryStorageManager.findFile(args.fileKey)
         if (x.found) {
             this.#kacheryHubInterface.sendUploadFileStatusMessage({channelName: args.channelName, fileKey: args.fileKey, status: 'started'})

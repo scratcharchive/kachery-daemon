@@ -1,3 +1,4 @@
+import { NodeChannelMembership } from "../common/types/kacheryHubTypes";
 import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "../common/types/kacheryTypes";
 import { formatByteCount, sleepMsec } from "../common/util";
 import KacheryDaemonNode from "../KacheryDaemonNode";
@@ -16,11 +17,17 @@ export default class DisplayStateService {
     stop() {
         this.#halted = true
     }
-    _updateDisplay() {
+    async _updateDisplay() {
         const lines: string[] = []
         lines.push('')
         lines.push('=======================================')
         lines.push(`NODE ${this.#node.nodeId()} (${this.#node.nodeLabel()})`)
+        const nodeConfig = await this.#node.kacheryHubInterface().getNodeConfig()
+        if (nodeConfig) {
+            ;(nodeConfig.channelMemberships || []).map(cm => {
+                lines.push(`CHANNEL ${cm.channelName} ${makeRoleString(cm)}`)
+            })
+        }
         if (this.opts.daemonApiPort)
             lines.push(`http://localhost:${this.opts.daemonApiPort}/stats?format=html`)
         lines.push('=======================================')
@@ -30,7 +37,8 @@ export default class DisplayStateService {
             this.#lastText = txt
             this.#lastDisplayTimestamp = nowTimestamp()
             console.info(txt)
-            console.info(`Downloaded: ${formatByteCount(this.#node.getStats({format: 'json'}).totalBytesReceived.total)}; Uploaded: ${formatByteCount(this.#node.getStats({format: 'json'}).totalBytesSent.total)};`)
+            const stats = this.#node.getStats({format: 'json'})
+            console.info(`Downloaded: ${formatByteCount(stats.totalBytesReceived)}; Uploaded: ${formatByteCount(stats.totalBytesSent)}; Messages sent: ${stats.totalMessagesSent}`)
             console.info(`Memory used: ${formatByteCount(byteCount(process.memoryUsage().heapUsed))} (heap); ${formatByteCount(byteCount(process.memoryUsage().external))} (external); ${formatByteCount(byteCount(process.memoryUsage().arrayBuffers))} (arrayBuffers);`)
         }
     }
@@ -41,4 +49,20 @@ export default class DisplayStateService {
             await sleepMsec(this.#intervalMsec, () => {return !this.#halted})
         }
     }
+}
+
+const makeRoleString = (cm: NodeChannelMembership) => {
+    const ret: string[] = []
+    if (cm.roles.downloadFiles) ret.push('dfi')
+    if (cm.roles.downloadFeeds) ret.push('dfe')
+    if (cm.roles.downloadTaskResults) ret.push('dtr')
+    if (cm.authorization) {
+        if ((cm.roles.requestFiles) && (cm.authorization.permissions.requestFiles))  ret.push('rfi')
+        if ((cm.roles.requestFeeds) && (cm.authorization.permissions.requestFeeds)) ret.push('rfe')
+        if ((cm.roles.requestTaskResults) && (cm.authorization.permissions.requestTaskResults)) ret.push('rtr')
+        if ((cm.roles.provideFiles) && (cm.authorization.permissions.provideFiles)) ret.push('pfi')
+        if ((cm.roles.provideFeeds) && (cm.authorization.permissions.provideFeeds)) ret.push('pfe')
+        if ((cm.roles.provideTaskResults) && (cm.authorization.permissions.provideTaskResults)) ret.push('ptr')
+    }
+    return ret.join(' ')
 }

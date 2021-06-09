@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { timeStamp } from 'console';
 import GarbageMap from '../common/GarbageMap';
-import { DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../common/types/kacheryTypes';
+import { byteCount, ChannelName, DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../common/types/kacheryTypes';
 import { sleepMsec } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
 import KacheryDaemonNode from '../KacheryDaemonNode';
 import KacheryHubInterface from '../kacheryHub/KacheryHubInterface';
+import NodeStats from '../NodeStats';
 import IncomingSubfeedSubscriptionManager from './IncomingSubfeedSubscriptionManager';
 import OutgoingSubfeedSubscriptionManager from './OutgoingSubfeedSubscriptionManager';
 import Subfeed from './Subfeed';
@@ -15,7 +16,7 @@ class FeedManager {
     #subfeeds = new GarbageMap<FeedSubfeedId, Subfeed>(scaledDurationMsec(8 * 60 * 1000)) // The subfeed instances (Subfeed()) that have been loaded into memory
     #incomingSubfeedSubscriptionManager: IncomingSubfeedSubscriptionManager
     #outgoingSubfeedSubscriptionManager: OutgoingSubfeedSubscriptionManager
-    constructor(private kacheryHubInterface: KacheryHubInterface, private localFeedManager: LocalFeedManagerInterface) {
+    constructor(private kacheryHubInterface: KacheryHubInterface, private localFeedManager: LocalFeedManagerInterface, private nodeStats: NodeStats) {
         this.#incomingSubfeedSubscriptionManager = new IncomingSubfeedSubscriptionManager()
         this.#outgoingSubfeedSubscriptionManager = new OutgoingSubfeedSubscriptionManager()
 
@@ -177,8 +178,8 @@ class FeedManager {
             }, durationMsecToNumber(waitMsec));
         });
     }
-    async createOrRenewIncomingSubfeedSubscription(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
-        if (!this.hasWriteableFeed(feedId)) return
+    async createOrRenewIncomingSubfeedSubscription(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
+        if (!(await this.hasWriteableFeed(feedId))) return
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         if (!subfeed.isWriteable()) {
             throw Error('Cannot have an incoming subscription to a subfeed that is not writeable')
@@ -189,13 +190,13 @@ class FeedManager {
             await this._reportSubfeedUpdateToChannel(channelName, feedId, subfeedHash, subfeed.getNumLocalMessages())
         }
     }
-    async reportSubfeedMessageCountUpdate(feedId: FeedId, subfeedHash: SubfeedHash, channelName: string, messageCount: MessageCount) {
+    async reportSubfeedMessageCountUpdate(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName, messageCount: MessageCount) {
         if (this.#outgoingSubfeedSubscriptionManager.hasSubfeedSubscription(feedId, subfeedHash)) {
             const subfeed = await this._loadSubfeed(feedId, subfeedHash)
             subfeed.reportNumRemoteMessages(channelName, messageCount)
         }
     }
-    async reportNumRemoteMessages(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, numRemoteMessages: MessageCount) {
+    async reportNumRemoteMessages(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, numRemoteMessages: MessageCount) {
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         subfeed.reportNumRemoteMessages(channelName, numRemoteMessages)
     }
@@ -247,7 +248,7 @@ class FeedManager {
             await this._uploadSubfeedMessagesToChannel(channelName, feedId, subfeedHash)
         }
     }
-    async _uploadSubfeedMessagesToChannel(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) {
+    async _uploadSubfeedMessagesToChannel(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
         const subfeed = await this._loadSubfeed(feedId, subfeedHash)
         const subfeedJson = await this.kacheryHubInterface.loadSubfeedJson(channelName, feedId, subfeedHash)
         if (subfeedJson) {
@@ -274,6 +275,7 @@ class FeedManager {
             if (resp.status !== 200) {
                 throw Error(`Error in upload of subfeed message: ${resp.statusText}`)
             }
+            this.nodeStats.reportBytesSent(byteCount(signedMessageContent.length), channelName)
         }
 
         {
@@ -298,12 +300,13 @@ class FeedManager {
                 if (resp.status !== 200) {
                     throw Error(`Error in upload of subfeed json: ${resp.statusText}`)
                 }
+                this.nodeStats.reportBytesSent(byteCount(subfeedJsonContent.length), channelName)
             }
         }
 
         this._reportSubfeedUpdateToChannel(channelName, feedId, subfeedHash, messageCount(i2))
     }
-    async _reportSubfeedUpdateToChannel(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) {
+    async _reportSubfeedUpdateToChannel(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) {
         this.kacheryHubInterface.reportToChannelSubfeedMessagesAdded(
             channelName,
             feedId,

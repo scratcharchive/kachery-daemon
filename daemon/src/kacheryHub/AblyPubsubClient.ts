@@ -1,13 +1,14 @@
 import Ably from 'ably'
-import { PubsubMessage } from './createPubsubClient'
+import { PubsubChannelName } from '../common/types/kacheryTypes'
+import { PubsubChannel, PubsubMessage } from './createPubsubClient'
 
 class AblyPubsubChannel {
     #ablyChannel: Ably.Types.RealtimeChannelCallbacks
     #messageBuffer: PubsubMessage[] = []
     #messageBufferSize: number = 0
     #sendMessageBufferScheduled = false
-    constructor(ablyClient: Ably.Realtime, private channelName: string, private opts: {}) {
-        this.#ablyChannel = ablyClient.channels.get(channelName)
+    constructor(ablyClient: Ably.Realtime, private channelName: PubsubChannelName, private opts: {}) {
+        this.#ablyChannel = ablyClient.channels.get(this.channelName.toString())
     }
     subscribe(callback: (message: PubsubMessage) => void) {
         this.#ablyChannel.subscribe((x: any) => {
@@ -71,7 +72,7 @@ class AblyPubsubClient {
     constructor(private opts: AblyPubsubClientOpts) {
         this.#ablyClient = new Ably.Realtime({authCallback: opts.authCallback});
     }
-    getChannel(channelName: string) {
+    getChannel(channelName: PubsubChannelName): PubsubChannel {
         return new AblyPubsubChannel(this.#ablyClient, channelName, {})
     }
     unsubscribe() {

@@ -1,5 +1,6 @@
 import axios from "axios"
-import { JSONValue } from "../common/types/kacheryTypes"
+import { ChannelName, JSONValue } from "../common/types/kacheryTypes"
+import NodeStats from "../NodeStats"
 
 export type GoogleObjectStorageClientOpts = {
     bucketName: string
@@ -8,7 +9,7 @@ export type GoogleObjectStorageClientOpts = {
 class GoogleObjectStorageClient {
     constructor(private opts: GoogleObjectStorageClientOpts) {
     }
-    async getObjectData(name: string, opts: {cacheBust?: boolean} = {}): Promise<ArrayBuffer | null> {
+    async getObjectData(name: string, opts: {cacheBust?: boolean, nodeStats: NodeStats, channelName: ChannelName | null}): Promise<ArrayBuffer | null> {
         let url = `https://storage.googleapis.com/${this.opts.bucketName}/${name}`
         if (opts.cacheBust) {
             url = cacheBust(url)
@@ -25,7 +26,7 @@ class GoogleObjectStorageClient {
         }
         else return null
     }
-    async getObjectJson(name: string, opts: {cacheBust?: boolean} = {}): Promise<JSONValue | null> {
+    async getObjectJson(name: string, opts: {cacheBust?: boolean, nodeStats: NodeStats, channelName: ChannelName | null}): Promise<JSONValue | null> {
         const data = await this.getObjectData(name, opts)
         if (!data) return null
         let ret: JSONValue

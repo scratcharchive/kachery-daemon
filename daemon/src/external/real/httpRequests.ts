@@ -2,7 +2,7 @@ import axios from 'axios';
 import { ClientRequest } from 'http';
 import { Socket } from 'net';
 import DataStreamy from '../../common/DataStreamy';
-import { Address, byteCount, ByteCount, DurationMsec, durationMsecToNumber, JSONObject, NodeId, UrlPath, urlString, UrlString } from '../../common/types/kacheryTypes';
+import { Address, byteCount, ByteCount, ChannelName, DurationMsec, durationMsecToNumber, JSONObject, NodeId, UrlPath, urlString, UrlString } from '../../common/types/kacheryTypes';
 import NodeStats from '../../NodeStats';
 
 export const _tests: {[key: string]: () => Promise<void>} = {}
@@ -38,12 +38,12 @@ export const httpPostJson = async (address: Address, path: UrlPath, data: Object
     }
     return res.data
 }
-export const httpGetDownload = async (address: Address, path: UrlPath, stats: NodeStats): Promise<DataStreamy> => {
+export const httpGetDownload = async (address: Address, path: UrlPath, stats: NodeStats, channelName: ChannelName | null): Promise<DataStreamy> => {
     const url = formUrl(address, path)
-    return await httpUrlDownload(url, stats)
+    return await httpUrlDownload(url, stats, channelName)
 }
 
-export const httpUrlDownload = async (url: UrlString, stats: NodeStats): Promise<DataStreamy> => {
+export const httpUrlDownload = async (url: UrlString, stats: NodeStats, channelName: ChannelName | null): Promise<DataStreamy> => {
     const res = await axios.get(url.toString(), {responseType: 'stream'})
     const stream = res.data
     const socket: Socket = stream.socket
@@ -55,11 +55,11 @@ export const httpUrlDownload = async (url: UrlString, stats: NodeStats): Promise
     ret.producer().onCancelled(() => {
         if (complete) return
         // todo: is this the right way to close it?
-        req.abort()
+        req.destroy()
     })
     stream.on('data', (data: Buffer) => {
         if (complete) return
-        stats.reportBytesReceived('http', null, byteCount(data.length))
+        stats.reportBytesReceived(byteCount(data.length), channelName)
         ret.producer().data(data)
     })
     stream.on('error', (err: Error) => {

@@ -1,4 +1,4 @@
-import { MessageCount, SignedSubfeedMessage } from "../common/types/kacheryTypes";
+import { ChannelName, MessageCount, SignedSubfeedMessage } from "../common/types/kacheryTypes";
 import KacheryDaemonNode from "../KacheryDaemonNode";
 import KacheryHubInterface from "../kacheryHub/KacheryHubInterface";
 import Subfeed from "./Subfeed";
@@ -7,7 +7,7 @@ class RemoteSubfeedMessageDownloader {
     constructor(private kacheryHubInterface: KacheryHubInterface, private subfeed: Subfeed) {
 
     }
-    async reportNumRemoteMessages(channelName: string, numRemoteMessages: MessageCount) {
+    async reportNumRemoteMessages(channelName: ChannelName, numRemoteMessages: MessageCount) {
         const feedId = this.subfeed.getFeedId()
         const subfeedHash = this.subfeed.getSubfeedHash()
         const numLocalMessages = this.subfeed.getNumLocalMessages()

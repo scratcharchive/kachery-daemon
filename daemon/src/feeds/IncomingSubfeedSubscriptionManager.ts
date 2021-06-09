@@ -1,15 +1,15 @@
 import GarbageMap from "../common/GarbageMap";
-import { durationMsecToNumber, elapsedSince, FeedId, MessageCount, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../common/types/kacheryTypes";
+import { ChannelName, durationMsecToNumber, elapsedSince, FeedId, MessageCount, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../common/types/kacheryTypes";
 import KacheryDaemonNode from "../KacheryDaemonNode";
 
 class IncomingSubfeedSubscriptionManager {
     #incomingSubscriptions = new GarbageMap<string, IncomingSubfeedSubscription>(scaledDurationMsec(300 * 60 * 1000))
     #subscriptionCodesBySubfeedCode = new GarbageMap<string, { [key: string]: boolean }>(scaledDurationMsec(300 * 60 * 1000))
-    // #reportToChannelMessagesAddedCallbacks: ((channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) => void)[]
+    // #reportToChannelMessagesAddedCallbacks: ((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) => void)[]
     constructor() {
 
     }
-    createOrRenewIncomingSubscription(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) {
+    createOrRenewIncomingSubscription(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
         const subscriptionCode = makeSubscriptionCode(channelName, feedId, subfeedHash)
         const subfeedCode = makeSubfeedCode(feedId, subfeedHash)
         this.#subscriptionCodesBySubfeedCode.set(subfeedCode, {...this.#subscriptionCodesBySubfeedCode.get(subfeedCode) || {}, [subscriptionCode]: true})
@@ -26,7 +26,7 @@ class IncomingSubfeedSubscriptionManager {
     getChannelsSubscribingToSubfeed(feedId: FeedId, subfeedHash: SubfeedHash) {
         const subfeedCode = makeSubfeedCode(feedId, subfeedHash)
         const x = this.#subscriptionCodesBySubfeedCode.get(subfeedCode) || {}
-        const ret: string[] = []
+        const ret: ChannelName[] = []
         for (let subscriptionCode in x) {
             const s = this.#incomingSubscriptions.get(subscriptionCode)
             if (s) {
@@ -47,10 +47,10 @@ class IncomingSubfeedSubscriptionManager {
     //         }
     //     }
     // }
-    // onReportToChannelMessagesAdded(callback: (channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) => void) {
+    // onReportToChannelMessagesAdded(callback: (channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) => void) {
     //     this.#reportToChannelMessagesAddedCallbacks.push(callback)
     // }
-    _checkRemove(channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) {
+    _checkRemove(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
         const subfeedCode = makeSubscriptionCode(channelName, feedId, subfeedHash)
         const S = this.#incomingSubscriptions.get(subfeedCode)
         if (!S) return
@@ -63,7 +63,7 @@ class IncomingSubfeedSubscriptionManager {
 
 class IncomingSubfeedSubscription {
     #lastRenewTimestamp = zeroTimestamp()
-    constructor(public channelName: string, public feedId: FeedId, public subfeedHash: SubfeedHash) {
+    constructor(public channelName: ChannelName, public feedId: FeedId, public subfeedHash: SubfeedHash) {
     }
     renew() {
         this.#lastRenewTimestamp = nowTimestamp()
@@ -76,7 +76,7 @@ class IncomingSubfeedSubscription {
     }
 }
 
-const makeSubscriptionCode = (channelName: string, feedId: FeedId, subfeedHash: SubfeedHash) => {
+const makeSubscriptionCode = (channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) => {
     return channelName + ':' + feedId.toString() + ':' + subfeedHash.toString()
 }
 

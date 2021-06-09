@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
-import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isString, isUrlString, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, _validateObject } from './common/types/kacheryTypes';
+import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isString, isUrlString, isUserId, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, UserId, _validateObject } from './common/types/kacheryTypes';
 import startDaemon from './startDaemon';
 
 // Thanks: https://stackoverflow.com/questions/4213351/make-node-js-not-exit-on-error
@@ -102,7 +102,13 @@ function main() {
       handler: async (argv) => {
         const daemonApiPort = Number(process.env.KACHERY_DAEMON_PORT || 20431)
         const label = nodeLabel(argv.label as string)
-        const ownerId = argv.owner as string
+        const ownerId: UserId | undefined = (() => {
+          if (argv.owner) {
+            if (!isUserId(argv.owner)) throw Error(`Not a valid owner ID: ${argv.owner}`)
+            return argv.owner as UserId
+          }
+          else return undefined
+        })()
         
         const verbose = Number(argv.verbose || 0)
         const authGroup: string | null = argv['auth-group'] ? argv['auth-group'] + '' : null 

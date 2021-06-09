@@ -1,11 +1,11 @@
 import fs from 'fs'
 import DataStreamy from "../common/DataStreamy"
-import { Address, ByteCount, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "../common/types/kacheryTypes"
+import { Address, ByteCount, ChannelName, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "../common/types/kacheryTypes"
 import MutableManager from "../mutables/MutableManager"
 import NodeStats from "../NodeStats"
 
 export type HttpPostJsonFunction = ((address: Address, path: UrlPath, data: Object, opts: {timeoutMsec: DurationMsec}) => Promise<JSONObject>)
-export type HttpGetDownloadFunction = ((address: Address, path: UrlPath, stats: NodeStats, opts: {fromNodeId: NodeId | null}) => Promise<DataStreamy>)
+export type HttpGetDownloadFunction = ((address: Address, path: UrlPath, stats: NodeStats, channelName: ChannelName | null) => Promise<DataStreamy>)
 
 export interface DgramSocket {
     bind: (port: number) => void,
@@ -51,7 +51,7 @@ export interface KacheryStorageManagerInterface {
     storeLocalFile: (localFilePath: LocalFilePath) => Promise<{sha1: Sha1Hash, manifestSha1: Sha1Hash | null}>
     linkLocalFile: (localFilePath: LocalFilePath, o: {size: number, mtime: number}) => Promise<{sha1: Sha1Hash, manifestSha1: Sha1Hash | null}>
     storeFileFromStream: (stream: DataStreamy, fileSize: ByteCount, o: {calculateHashOnly: boolean}) => Promise<{sha1: Sha1Hash, manifestSha1: Sha1Hash | null}>
-    storeFileFromBucketUrl: (url: UrlString, o: {sha1: Sha1Hash, nodeStats: NodeStats}) => Promise<DataStreamy>
+    storeFileFromBucketUrl: (url: UrlString, o: {sha1: Sha1Hash, nodeStats: NodeStats, channelName: ChannelName | null}) => Promise<DataStreamy>
     concatenateChunksAndStoreResult: (sha1: Sha1Hash, chunkSha1s: Sha1Hash[]) => Promise<void>
     storageDir: () => LocalFilePath
 }

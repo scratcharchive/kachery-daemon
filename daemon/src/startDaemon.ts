@@ -1,5 +1,5 @@
 import ExternalInterface from './external/ExternalInterface';
-import { NodeLabel, Port } from './common/types/kacheryTypes';
+import { NodeLabel, Port, UserId } from './common/types/kacheryTypes';
 import KacheryDaemonNode from './KacheryDaemonNode';
 import ClientAuthService from './services/ClientAuthService';
 import DaemonApiServer from './services/DaemonApiServer';
@@ -31,7 +31,7 @@ const startDaemon = async (args: {
     verbose: number,
     daemonApiPort: Port | null,
     label: NodeLabel,
-    ownerId: string,
+    ownerId?: UserId,
     externalInterface: ExternalInterface,
     opts: StartDaemonOpts
 }): Promise<DaemonInterface> => {

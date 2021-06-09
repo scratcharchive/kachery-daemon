@@ -4,7 +4,7 @@ import { nextTick } from 'process';
 import { feedIdToPublicKeyHex, getSignatureJson, hexToPublicKey, verifySignatureJson } from '../common/types/crypto_util';
 import { randomAlphaString } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
+import { ChannelName, DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
 import LocalSubfeedSignedMessagesManager from './LocalSubfeedSignedMessagesManager';
 import KacheryDaemonNode from '../KacheryDaemonNode';
 import RemoteSubfeedMessageDownloader from './RemoteSubfeedMessageDownloader';
@@ -270,7 +270,7 @@ class Subfeed {
     onSubscribeToRemoteSubfeed(callback: (feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void) {
         this.#subscribeToRemoteSubfeedCallbacks.push(callback)
     }
-    reportNumRemoteMessages(channelName: string, numRemoteMessages: MessageCount) {
+    reportNumRemoteMessages(channelName: ChannelName, numRemoteMessages: MessageCount) {
         this.#remoteSubfeedMessageDownloader.reportNumRemoteMessages(channelName, numRemoteMessages)
     }
 }

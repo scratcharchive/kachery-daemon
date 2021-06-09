@@ -1,16 +1,17 @@
 import axios from "axios";
 import GarbageMap from "../common/GarbageMap";
-import { ByteCount, FileKey, fileKeyHash, scaledDurationMsec, Sha1Hash, sha1OfObject, UrlString } from "../common/types/kacheryTypes";
+import { byteCount, ByteCount, ChannelName, FileKey, fileKeyHash, scaledDurationMsec, Sha1Hash, sha1OfObject, UrlString } from "../common/types/kacheryTypes";
 import { KacheryStorageManagerInterface } from "../external/ExternalInterface";
+import NodeStats from "../NodeStats";
 
-export type SignedFileUploadUrlCallback = (a: {channelName: string, sha1: Sha1Hash, size: ByteCount}) => Promise<UrlString>
+export type SignedFileUploadUrlCallback = (a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) => Promise<UrlString>
 
 class FileUploadTask {
     #complete = false
     #onCompleteCallbacks: (() => void)[] = []
     #status: 'waiting' | 'running' | 'finished' | 'error' = 'waiting'
     #error: Error | undefined = undefined
-    constructor(private channelName: string, private fileKey: FileKey, private fileSize: ByteCount, private signedFileUploadUrlCallback: SignedFileUploadUrlCallback, private kacheryStorageManager: KacheryStorageManagerInterface) {
+    constructor(private channelName: ChannelName, private fileKey: FileKey, private fileSize: ByteCount, private signedFileUploadUrlCallback: SignedFileUploadUrlCallback, private kacheryStorageManager: KacheryStorageManagerInterface, private nodeStats: NodeStats) {
         this._start()
     }
     async wait() {
@@ -48,6 +49,7 @@ class FileUploadTask {
             if (resp.status !== 200) {
                 throw Error(`Error in upload: ${resp.statusText}`)
             }
+            this.nodeStats.reportBytesSent(size, this.channelName)
             this.#status = 'finished'
         }
         catch(err) {
@@ -61,14 +63,14 @@ class FileUploadTask {
 
 class FileUploadTaskManager {
     #tasks = new GarbageMap<Sha1Hash, FileUploadTask>(scaledDurationMsec(1000 * 60 * 60))
-    constructor(private signedFileUploadUrlCallback: SignedFileUploadUrlCallback, private kacheryStorageManager: KacheryStorageManagerInterface) {
+    constructor(private signedFileUploadUrlCallback: SignedFileUploadUrlCallback, private kacheryStorageManager: KacheryStorageManagerInterface, private nodeStats: NodeStats) {
 
     }
-    getTask(channelName: string, fileKey: FileKey, fileSize: ByteCount) {
-        const code = sha1OfObject({channelName, fileKeyHash: fileKeyHash(fileKey).toString()})
+    getTask(channelName: ChannelName, fileKey: FileKey, fileSize: ByteCount) {
+        const code = sha1OfObject({channelName: channelName.toString(), fileKeyHash: fileKeyHash(fileKey).toString()})
         const t = this.#tasks.get(code)
         if (t) return t
-        const newTask = new FileUploadTask(channelName, fileKey, fileSize, this.signedFileUploadUrlCallback, this.kacheryStorageManager)
+        const newTask = new FileUploadTask(channelName, fileKey, fileSize, this.signedFileUploadUrlCallback, this.kacheryStorageManager, this.nodeStats)
         this.#tasks.set(code, newTask)
         return newTask
     }
@@ -76,10 +78,10 @@ class FileUploadTaskManager {
 
 class FileUploader {
     #taskManager: FileUploadTaskManager
-    constructor(private signedFileUploadUrlCallback: SignedFileUploadUrlCallback, private kacheryStorageManager: KacheryStorageManagerInterface) {
-        this.#taskManager = new FileUploadTaskManager(this.signedFileUploadUrlCallback, this.kacheryStorageManager)
+    constructor(private signedFileUploadUrlCallback: SignedFileUploadUrlCallback, private kacheryStorageManager: KacheryStorageManagerInterface, private nodeStats: NodeStats) {
+        this.#taskManager = new FileUploadTaskManager(this.signedFileUploadUrlCallback, this.kacheryStorageManager, this.nodeStats)
     }
-    async uploadFileToBucket(args: {channelName: string, fileKey: FileKey, fileSize: ByteCount}) {
+    async uploadFileToBucket(args: {channelName: ChannelName, fileKey: FileKey, fileSize: ByteCount}) {
         const {channelName, fileKey, fileSize} = args
         const task = this.#taskManager.getTask(channelName, fileKey, fileSize)
         await task.wait()

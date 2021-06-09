@@ -3,20 +3,9 @@ import KacheryDaemonNode from "./KacheryDaemonNode";
 
 export interface NodeStatsInterface {
     nodeId: NodeId,
-    totalBytesSent: {
-        total: ByteCount,
-        multicastUdp: ByteCount,
-        udp: ByteCount,
-        http: ByteCount,
-        webSocket: ByteCount
-    },
-    totalBytesReceived: {
-        total: ByteCount,
-        multicastUdp: ByteCount,
-        udp: ByteCount,
-        http: ByteCount,
-        webSocket: ByteCount
-    },
+    totalBytesSent: ByteCount
+    totalBytesReceived: ByteCount
+    totalMessagesSent: number
     html?: string
 }
 
@@ -33,7 +22,8 @@ export const getStats = (node: KacheryDaemonNode, o: GetStatsOpts): NodeStatsInt
     const ret: NodeStatsInterface = {
         nodeId: node.nodeId(),
         totalBytesSent: node.stats().totalBytesSent(),
-        totalBytesReceived: node.stats().totalBytesReceived()
+        totalBytesReceived: node.stats().totalBytesReceived(),
+        totalMessagesSent: node.stats().totalMessagesSent()
     }
     const format = o.format || 'json'
     if (format === 'json') {

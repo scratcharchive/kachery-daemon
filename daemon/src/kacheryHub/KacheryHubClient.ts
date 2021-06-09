@@ -3,15 +3,15 @@ import axios from "axios"
 import { getSignature, nodeIdToPublicKey, publicKeyHexToNodeId, publicKeyToHex, verifySignature } from "../common/types/crypto_util"
 import { isNodeConfig, isPubsubAuth, PubsubAuth } from "../common/types/kacheryHubTypes"
 import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isGetNodeConfigResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
-import { ByteCount, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, Sha1Hash, SubfeedHash } from "../common/types/kacheryTypes"
+import { ByteCount, ChannelName, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, UserId } from "../common/types/kacheryTypes"
 import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../common/types/pubsubMessages'
 import { randomAlphaString } from "../common/util"
 import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
 import createPubsubClient, { PubsubClient, PubsubMessage } from "./createPubsubClient"
 
 export type IncomingKacheryHubPubsubMessage = {
-    channelName: string,
-    pubsubChannelName: string,
+    channelName: ChannelName,
+    pubsubChannelName: PubsubChannelName,
     fromNodeId: NodeId,
     message: KacheryHubPubsubMessageBody
 }
@@ -19,9 +19,10 @@ export type IncomingKacheryHubPubsubMessage = {
 class KacheryHubClient {
     #pubsubClients: {[key: string]: PubsubClient} = {}
     #incomingPubsubMessageCallbacks: {[key: string]: (x: IncomingKacheryHubPubsubMessage) => void} = {}
-    constructor(private opts: {keyPair: KeyPair, ownerId: string, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
+    constructor(private opts: {keyPair: KeyPair, ownerId?: UserId, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
     }
     async fetchNodeConfig() {
+        if (!this.opts.ownerId) throw Error('No owner ID in fetchNodeConfig')
         const reqBody: GetNodeConfigRequestBody = {
             type: 'getNodeConfig',
             nodeId: this.nodeId,
@@ -38,7 +39,8 @@ class KacheryHubClient {
         if (!nodeConfig) throw Error('Unexpected, no nodeConfig')
         return nodeConfig
     }
-    async fetchPubsubAuthForChannel(channelName: string) {
+    async fetchPubsubAuthForChannel(channelName: ChannelName) {
+        if (!this.opts.ownerId) throw Error('No owner ID in fetchPubsubAuthForChannel')
         const reqBody: GetPubsubAuthForChannelRequestBody = {
             type: 'getPubsubAuthForChannel',
             nodeId: this.nodeId,
@@ -53,6 +55,7 @@ class KacheryHubClient {
         return pubsubAuth
     }
     async report() {
+        if (!this.opts.ownerId) throw Error('No owner ID in report')
         const reqBody: ReportRequestBody = {
             type: 'report',
             nodeId: this.nodeId,
@@ -61,7 +64,8 @@ class KacheryHubClient {
         }
         await this._sendRequest(reqBody)
     }
-    async createSignedFileUploadUrl(a: {channelName: string, sha1: Sha1Hash, size: ByteCount}) {
+    async createSignedFileUploadUrl(a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) {
+        if (!this.opts.ownerId) throw Error('No owner ID in createSignedFileUploadUrl')
         const {channelName, sha1, size} = a
         const reqBody: CreateSignedFileUploadUrlRequestBody = {
             type: 'createSignedFileUploadUrl',
@@ -77,7 +81,8 @@ class KacheryHubClient {
         }
         return x.signedUrl
     }
-    async createSignedSubfeedMessageUploadUrls(a: {channelName: string, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
+    async createSignedSubfeedMessageUploadUrls(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
+        if (!this.opts.ownerId) throw Error('No owner ID in createSignedSubfeedMessageUploadUrls')
         const {channelName, feedId, subfeedHash, messageNumberRange} = a
         const reqBody: CreateSignedSubfeedMessageUploadUrlRequestBody = {
             type: 'createSignedSubfeedMessageUploadUrl',
@@ -104,8 +109,8 @@ class KacheryHubClient {
         }
         this.#pubsubClients = {}
     }
-    createPubsubClientForChannel(channelName: string, subscribeToPubsubChannels: string[]) {
-        if (channelName in this.#pubsubClients) {
+    createPubsubClientForChannel(channelName: ChannelName, subscribeToPubsubChannels: PubsubChannelName[]) {
+        if (channelName.toString() in this.#pubsubClients) {
             // todo: think about how to update the subscriptions of the auth has changed
             return
         }
@@ -141,11 +146,11 @@ class KacheryHubClient {
                 }
             })
         }
-        this.#pubsubClients[channelName] = client
+        this.#pubsubClients[channelName.toString()] = client
     }
-    getPubsubClientForChannel(channelName: string) {
-        if (channelName in this.#pubsubClients) {
-            return this.#pubsubClients[channelName]
+    getPubsubClientForChannel(channelName: ChannelName) {
+        if (channelName.toString() in this.#pubsubClients) {
+            return this.#pubsubClients[channelName.toString()]
         }
         else {
             return undefined

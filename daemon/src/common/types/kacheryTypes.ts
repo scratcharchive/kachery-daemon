@@ -456,6 +456,78 @@ export const subfeedHash = (x: Sha1Hash): SubfeedHash => {
     if (isSubfeedHash(x)) return x
     else throw Error(`Invalid subfeed hash: ${x}`)
 }
+
+// ChannelName
+export interface ChannelName extends String {
+    __channelName__: never // phantom type
+}
+export const isChannelName = (x: any): x is ChannelName => {
+    if (!isString(x)) return false;
+    if (x.length > 40) return false
+    let result = true
+    x.split(".").forEach((element) => {
+        if (element.length === 0) result = false
+        if (!/^[a-zA-Z0-9@]([a-zA-Z0-9@-]*[a-zA-Z0-9@])?$/.test(element)) result = false
+    })
+    return result
+}
+export const channelName = (x: string) => {
+    if (!isChannelName(x)) throw Error(`Invalid channel name: ${x}`)
+    return x as ChannelName
+}
+
+// TaskFunctionId
+export interface TaskFunctionId extends String {
+    __taskFunctionId__: never // phantom type
+}
+export const isTaskFunctionId = (x: any): x is TaskFunctionId => {
+    if (!isString(x)) return false;
+    if (x.length > 40) return false
+    let result = true
+    x.split(".").forEach((element) => {
+        if (element.length === 0) result = false
+        if (!/^[a-zA-Z0-9@]([a-zA-Z0-9@-]*[a-zA-Z0-9@])?$/.test(element)) result = false
+    })
+    return result
+}
+
+// PubsubChannelName
+export interface PubsubChannelName extends String {
+    __pubsubChannelName__: never // phantom type
+}
+export const isPubsubChannelName = (x: any): x is PubsubChannelName => {
+    if (!isString(x)) return false;
+    if (x.length > 40) return false
+    return true
+}
+export const pubsubChannelName = (x: string) => {
+    if (!isPubsubChannelName(x)) throw Error(`Invalid pubsub channel name: ${x}`)
+    return x as PubsubChannelName
+}
+
+// UserId
+export interface UserId extends String {
+    __userId__: never // phantom type
+}
+export const isUserId = (x: any): x is UserId => {
+    if (!isString(x)) return false;
+    if (x.length > 80) return false
+    return true
+}
+export const userId = (x: string) => {
+    if (!isUserId(x)) throw Error(`Invalid user ID: ${x}`)
+    return x as UserId
+}
+
+export interface TaskKwargs  {
+    __taskFunctionKwargs__: never // phantom type
+}
+export const isTaskKwargs = (x: any): x is TaskKwargs => {
+    if (!isJSONObject(x)) return false
+    return true
+}
+
+
 // ErrorMessage
 export interface ErrorMessage extends String {
     __errorMessage__: never; // phantom

@@ -1,10 +1,10 @@
 import { isNodeConfig, NodeConfig } from "./kacheryHubTypes"
-import { ByteCount, FeedId, isArrayOf, isBoolean, isByteCount, isEqualTo, isFeedId, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isString, isSubfeedHash, isUrlString, NodeId, NodeLabel, optional, Sha1Hash, Signature, SubfeedHash, UrlString, _validateObject } from "./kacheryTypes"
+import { ByteCount, ChannelName, FeedId, isArrayOf, isBoolean, isByteCount, isChannelName, isEqualTo, isFeedId, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isString, isSubfeedHash, isUrlString, isUserId, NodeId, NodeLabel, optional, Sha1Hash, Signature, SubfeedHash, UrlString, UserId, _validateObject } from "./kacheryTypes"
 
 export type ReportRequestBody = {
     type: 'report'
     nodeId: NodeId
-    ownerId: string
+    ownerId: UserId
     nodeLabel: NodeLabel
 }
 
@@ -12,7 +12,7 @@ export const isReportRequestBody = (x: any): x is ReportRequestBody => {
     return _validateObject(x, {
         type: isEqualTo('report'),
         nodeId: isNodeId,
-        ownerId: isString,
+        ownerId: isUserId,
         nodeLabel: isNodeLabel
     })
 }
@@ -20,14 +20,14 @@ export const isReportRequestBody = (x: any): x is ReportRequestBody => {
 export type GetNodeConfigRequestBody = {
     type: 'getNodeConfig'
     nodeId: NodeId
-    ownerId: string
+    ownerId: UserId
 }
 
 export const isGetNodeConfigRequestBody = (x: any): x is GetNodeConfigRequestBody => {
     return _validateObject(x, {
         type: isEqualTo('getNodeConfig'),
         nodeId: isNodeId,
-        ownerId: isString
+        ownerId: isUserId
     })
 }
 
@@ -46,24 +46,24 @@ export const isGetNodeConfigResponse = (x: any): x is GetNodeConfigResponse => {
 export type GetPubsubAuthForChannelRequestBody = {
     type: 'getPubsubAuthForChannel'
     nodeId: NodeId
-    ownerId: string,
-    channelName: string
+    ownerId: UserId,
+    channelName: ChannelName
 }
 
 export const isGetPubsubAuthForChannelRequestBody = (x: any): x is GetPubsubAuthForChannelRequestBody => {
     return _validateObject(x, {
         type: isEqualTo('getPubsubAuthForChannel'),
         nodeId: isNodeId,
-        ownerId: isString,
-        channelName: isString
+        ownerId: isUserId,
+        channelName: isChannelName
     })
 }
 
 export type CreateSignedFileUploadUrlRequestBody = {
     type: 'createSignedFileUploadUrl'
     nodeId: NodeId
-    ownerId: string
-    channelName: string
+    ownerId: UserId
+    channelName: ChannelName
     sha1: Sha1Hash
     size: ByteCount
 }
@@ -72,8 +72,8 @@ export const isCreateSignedFileUploadUrlRequestBody = (x: any): x is CreateSigne
     return _validateObject(x, {
         type: isEqualTo('createSignedFileUploadUrl'),
         nodeId: isNodeId,
-        ownerId: isString,
-        channelName: isString,
+        ownerId: isUserId,
+        channelName: isChannelName,
         sha1: isSha1Hash,
         size: isByteCount
     })
@@ -92,8 +92,8 @@ export const isCreateSignedFileUploadUrlResponse = (x: any): x is CreateSignedFi
 export type CreateSignedSubfeedMessageUploadUrlRequestBody = {
     type: 'createSignedSubfeedMessageUploadUrl'
     nodeId: NodeId
-    ownerId: string
-    channelName: string
+    ownerId: UserId
+    channelName: ChannelName
     feedId: FeedId
     subfeedHash: SubfeedHash
     messageNumberRange: [number, number]
@@ -103,8 +103,8 @@ export const isCreateSignedSubfeedMessageUploadUrlRequestBody = (x: any): x is C
     return _validateObject(x, {
         type: isEqualTo('createSignedSubfeedMessageUploadUrl'),
         nodeId: isNodeId,
-        ownerId: isString,
-        channelName: isString,
+        ownerId: isUserId,
+        channelName: isChannelName,
         feedId: isFeedId,
         subfeedHash: isSubfeedHash,
         messageNumberRange: isArrayOf(isNumber)

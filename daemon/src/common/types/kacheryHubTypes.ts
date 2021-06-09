@@ -1,4 +1,4 @@
-import { isArrayOf, isBoolean, isEqualTo, isNodeId, isNodeLabel, isNumber, isOneOf, isSignature, isString, isTimestamp, NodeId, NodeLabel, optional, Signature, Timestamp, _validateObject } from "./kacheryTypes"
+import { ChannelName, isArrayOf, isBoolean, isChannelName, isEqualTo, isNodeId, isNodeLabel, isNumber, isOneOf, isSignature, isString, isTimestamp, isUserId, NodeId, NodeLabel, optional, Signature, Timestamp, UserId, _validateObject } from "./kacheryTypes"
 
 export type GoogleServiceAccountCredentials = {
     type: 'service_account',
@@ -49,7 +49,7 @@ export const isPubsubAuth = (x: any): x is PubsubAuth => {
 }
 
 export type NodeChannelAuthorization = {
-    channelName: string
+    channelName: ChannelName
     nodeId: NodeId
     permissions: {
         requestFiles?: boolean
@@ -74,7 +74,7 @@ export type NodeChannelAuthorization = {
 
 export const isNodeChannelAuthorization = (x: any): x is NodeChannelAuthorization => {
     return _validateObject(x, {
-        channelName: isString,
+        channelName: isChannelName,
         nodeId: isNodeId,
         permissions: {
             requestFiles: optional(isBoolean),
@@ -99,8 +99,8 @@ export const isNodeChannelAuthorization = (x: any): x is NodeChannelAuthorizatio
 }
 
 export type ChannelConfig = {
-    channelName: string
-    ownerId: string
+    channelName: ChannelName
+    ownerId: UserId
     bucketUri?: string
     googleServiceAccountCredentials?: string | '*private*'
     ablyApiKey?: string | '*private*'
@@ -110,8 +110,8 @@ export type ChannelConfig = {
 
 export const isChannelConfig = (x: any): x is ChannelConfig => {
     return _validateObject(x, {
-        channelName: isString,
-        ownerId: isString,
+        channelName: isChannelName,
+        ownerId: isUserId,
         bucketUri: optional(isString),
         googleServiceAccountCredentials: optional(isOneOf([isString, isEqualTo('*private*')])),
         ablyApiKey: optional(isOneOf([isString, isEqualTo('*private*')])),
@@ -122,21 +122,21 @@ export const isChannelConfig = (x: any): x is ChannelConfig => {
 
 export type NodeReport = {
     nodeId: NodeId,
-    ownerId: string,
+    ownerId: UserId,
     nodeLabel: NodeLabel
 }
 
 export const isNodeReport = (x: any): x is NodeReport => {
     return _validateObject(x, {
         nodeId: isNodeId,
-        ownerId: isString,
+        ownerId: isUserId,
         nodeLabel: isNodeLabel
     }, {allowAdditionalFields: true})
 }
 
 export type NodeChannelMembership = {
     nodeId: NodeId
-    channelName: string
+    channelName: ChannelName
     roles: {
         downloadFiles?: boolean
         downloadFeeds?: boolean
@@ -155,7 +155,7 @@ export type NodeChannelMembership = {
 const isNodeChannelMembership = (x: any): x is NodeChannelMembership => {
     return _validateObject(x, {
         nodeId: isNodeId,
-        channelName: isString,
+        channelName: isChannelName,
         roles: (a: any) => (_validateObject(a, {
             downloadFiles: optional(isBoolean),
             downloadFeeds: optional(isBoolean),
@@ -174,7 +174,7 @@ const isNodeChannelMembership = (x: any): x is NodeChannelMembership => {
 
 export type NodeConfig = {
     nodeId: NodeId
-    ownerId: string
+    ownerId: UserId
     channelMemberships?: NodeChannelMembership[]
     lastNodeReport?: NodeReport
     lastNodeReportTimestamp?: Timestamp
@@ -184,7 +184,7 @@ export type NodeConfig = {
 export const isNodeConfig = (x: any): x is NodeConfig => {
     return _validateObject(x, {
         nodeId: isNodeId,
-        ownerId: isString,
+        ownerId: isUserId,
         channelMemberships: optional(isArrayOf(isNodeChannelMembership)),
         memberships: optional(isNumber), // for historical - remove eventually
         lastNodeReport: optional(isNodeReport),
@@ -207,14 +207,14 @@ export const isAuth = (x: any): x is Auth => {
 
 export type GetChannelsForUserRequest = {
     type: 'getChannelsForUser'
-    userId: string
+    userId: UserId
     auth: Auth
 }
 
 export const isGetChannelsForUserRequest = (x: any): x is GetChannelsForUserRequest => {
     return _validateObject(x, {
         type: isEqualTo('getChannelsForUser'),
-        userId: isString,
+        userId: isUserId,
         auth: isAuth
     })
 }
@@ -235,28 +235,28 @@ export const isAddChannelRequest = (x: any): x is AddChannelRequest => {
 
 export type DeleteChannelRequest = {
     type: 'deleteChannel'
-    channelName: string
+    channelName: ChannelName
     auth: Auth
 }
 
 export const isDeleteChannelRequest = (x: any): x is DeleteChannelRequest => {
     return _validateObject(x, {
         type: isEqualTo('deleteChannel'),
-        channelName: isString,
+        channelName: isChannelName,
         auth: isAuth
     })
 }
 
 export type GetNodesForUserRequest = {
     type: 'getNodesForUser'
-    userId: string,
+    userId: UserId,
     auth: Auth
 }
 
 export const isGetNodesForUserRequest = (x: any): x is GetNodesForUserRequest => {
     return _validateObject(x, {
         type: isEqualTo('getNodesForUser'),
-        userId: isString,
+        userId: isUserId,
         auth: isAuth
     })
 }
@@ -264,7 +264,7 @@ export const isGetNodesForUserRequest = (x: any): x is GetNodesForUserRequest =>
 export type GetNodeForUserRequest = {
     type: 'getNodeForUser'
     nodeId: NodeId
-    userId: string
+    userId: UserId
     auth: Auth
 }
 
@@ -272,7 +272,7 @@ export const isGetNodeForUserRequest = (x: any): x is GetNodeForUserRequest => {
     return _validateObject(x, {
         type: isEqualTo('getNodeForUser'),
         nodeId: isNodeId,
-        userId: isString,
+        userId: isUserId,
         auth: isAuth
     })
 }
@@ -291,14 +291,14 @@ export const isGetNodeForUserResponse = (x: any): x is GetNodeForUserResponse =>
 
 export type GetChannelRequest = {
     type: 'getChannel'
-    channelName: string
+    channelName: ChannelName
     auth: Auth
 }
 
 export const isGetChannelRequest = (x: any): x is GetChannelRequest => {
     return _validateObject(x, {
         type: isEqualTo('getChannel'),
-        channelName: isString,
+        channelName: isChannelName,
         auth: isAuth
     })
 }
@@ -334,7 +334,7 @@ export const isDeleteNodeRequest = (x: any): x is DeleteNodeRequest => {
 export type AddNodeChannelMembershipRequest = {
     type: 'addNodeChannelMembership',
     nodeId: NodeId
-    channelName: string
+    channelName: ChannelName
     auth: Auth
 }
 
@@ -342,14 +342,14 @@ export const isAddNodeChannelMembershipRequest = (x: any): x is AddNodeChannelMe
     return _validateObject(x, {
         type: isEqualTo('addNodeChannelMembership'),
         nodeId: isNodeId,
-        channelName: isString,
+        channelName: isChannelName,
         auth: isAuth
     })
 }
 
 export type AddAuthorizedNodeRequest = {
     type: 'addAuthorizedNode'
-    channelName: string
+    channelName: ChannelName
     nodeId: NodeId
     auth: Auth
 }
@@ -357,7 +357,7 @@ export type AddAuthorizedNodeRequest = {
 export const isAddAuthorizedNodeRequest = (x: any): x is AddAuthorizedNodeRequest => {
     return _validateObject(x, {
         type: isEqualTo('addAuthorizedNode'),
-        channelName: isString,
+        channelName: isChannelName,
         nodeId: isNodeId,
         auth: isAuth
     })
@@ -379,7 +379,7 @@ export const isUpdateNodeChannelAuthorizationRequest = (x: any): x is UpdateNode
 
 export type DeleteNodeChannelAuthorizationRequest = {
     type: 'deleteNodeChannelAuthorization'
-    channelName: string
+    channelName: ChannelName
     nodeId: NodeId
     auth: Auth
 }
@@ -387,7 +387,7 @@ export type DeleteNodeChannelAuthorizationRequest = {
 export const isDeleteNodeChannelAuthorizationRequest = (x: any): x is DeleteNodeChannelAuthorizationRequest => {
     return _validateObject(x, {
         type: isEqualTo('deleteNodeChannelAuthorization'),
-        channelName: isString,
+        channelName: isChannelName,
         nodeId: isNodeId,
         auth: isAuth
     })
@@ -395,7 +395,7 @@ export const isDeleteNodeChannelAuthorizationRequest = (x: any): x is DeleteNode
 
 export type UpdateChannelPropertyRequest = {
     type: 'updateChannelProperty'
-    channelName: string
+    channelName: ChannelName
     propertyName: 'bucketUri' | 'ablyApiKey' | 'googleServiceAccountCredentials'
     propertyValue: string
     auth: Auth
@@ -404,7 +404,7 @@ export type UpdateChannelPropertyRequest = {
 export const isUpdateChannelPropertyRequest = (x: any): x is UpdateChannelPropertyRequest => {
     return _validateObject(x, {
         type: isEqualTo('updateChannelProperty'),
-        channelName: isString,
+        channelName: isChannelName,
         propertyName: isOneOf(['bucketUri', 'ablyApiKey', 'googleServiceAccountCredentials'].map(x => isEqualTo(x))),
         propertyValue: isString,
         auth: isAuth
@@ -427,7 +427,7 @@ export const isUpdateNodeChannelMembershipRequest = (x: any): x is UpdateNodeCha
 
 export type DeleteNodeChannelMembershipRequest = {
     type: 'deleteNodeChannelMembership'
-    channelName: string
+    channelName: ChannelName
     nodeId: NodeId
     auth: Auth
 }
@@ -435,7 +435,7 @@ export type DeleteNodeChannelMembershipRequest = {
 export const isDeleteNodeChannelMembershipRequest = (x: any): x is DeleteNodeChannelMembershipRequest => {
     return _validateObject(x, {
         type: isEqualTo('deleteNodeChannelMembership'),
-        channelName: isString,
+        channelName: isChannelName,
         nodeId: isNodeId,
         auth: isAuth
     })
@@ -443,14 +443,14 @@ export const isDeleteNodeChannelMembershipRequest = (x: any): x is DeleteNodeCha
 
 export type NodeReportRequestBody = {
     nodeId: NodeId
-    ownerId: string
+    ownerId: UserId
     nodeLabel: NodeLabel
 }
 
 export const isNodeReportRequestBody = (x: any): x is NodeReportRequestBody => {
     return _validateObject(x, {
         nodeId: isNodeId,
-        ownerId: isString,
+        ownerId: isUserId,
         nodeLabel: isNodeLabel
     })
 }

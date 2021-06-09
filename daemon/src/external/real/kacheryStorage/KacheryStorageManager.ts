@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fs, { createReadStream } from 'fs';
 import DataStreamy from '../../../common/DataStreamy';
 import { randomAlphaString, sleepMsec } from '../../../common/util';
-import { byteCount, ByteCount, byteCountToNumber, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, localFilePath, LocalFilePath, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from '../../../common/types/kacheryTypes';
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, localFilePath, LocalFilePath, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from '../../../common/types/kacheryTypes';
 import axios from 'axios';
 import { Socket } from 'net';
 import { ClientRequest } from 'http';
@@ -153,7 +153,7 @@ export class KacheryStorageManager {
             })
         })
     }
-    async storeFileFromBucketUrl(url: UrlString, o: {sha1: Sha1Hash, nodeStats: NodeStats}): Promise<DataStreamy> {
+    async storeFileFromBucketUrl(url: UrlString, o: {sha1: Sha1Hash, nodeStats: NodeStats, channelName: ChannelName | null}): Promise<DataStreamy> {
         const tmpDestPath = `${this.#storageDir}/store.file.${randomAlphaString(10)}.tmp`
         const writeStream = fs.createWriteStream(tmpDestPath)
         const shasum = crypto.createHash('sha1')
@@ -192,7 +192,7 @@ export class KacheryStorageManager {
             req.destroy()
         })
         stream.on('data', (data: Buffer) => {
-            o.nodeStats.reportBytesReceived('http', null, byteCount(data.length))
+            o.nodeStats.reportBytesReceived(byteCount(data.length), o.channelName)
             if (complete) return
             shasum.update(data)
             writeStream.write(data)

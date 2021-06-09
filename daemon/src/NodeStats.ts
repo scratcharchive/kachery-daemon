@@ -1,37 +1,46 @@
-import { addByteCount, byteCount, ByteCount, NodeId } from "./common/types/kacheryTypes";
+import GarbageMap from "./common/GarbageMap";
+import { addByteCount, byteCount, ByteCount, ChannelName } from "./common/types/kacheryTypes";
 
 type BytesSentMethod = 'multicastUdp' | 'udp' | 'http' | 'webSocket'
 type BytesReceivedMethod = 'multicastUdp' | 'udp' | 'http' | 'webSocket'
 
 export default class NodeStats {
-    #totalBytesSent = {
-        total: byteCount(0),
-        multicastUdp: byteCount(0),
-        udp: byteCount(0),
-        http: byteCount(0),
-        webSocket: byteCount(0)
-    }
-    #totalBytesReceived = {
-        total: byteCount(0),
-        multicastUdp: byteCount(0),
-        udp: byteCount(0),
-        http: byteCount(0),
-        webSocket: byteCount(0)
-    }
+    #bytesSent = byteCount(0)
+    #bytesSentByChannel = new GarbageMap<ChannelName, ByteCount>(null)
+    #bytesReceived = byteCount(0)
+    #bytesReceivedByChannel = new GarbageMap<ChannelName, ByteCount>(null)
+    #messagesSent: number = 0
+    #messagesSentByChannel = new GarbageMap<ChannelName, number>(null)
+    #messagesReceived: number = 0
+    #messagesReceivedByChannel = new GarbageMap<ChannelName, number>(null)
     constructor() {
     }
     totalBytesSent() {
-        return {...this.#totalBytesSent}
+        return this.#bytesSent
     }
     totalBytesReceived() {
-        return {...this.#totalBytesReceived}
+        return this.#bytesReceived
     }
-    reportBytesSent(method: BytesSentMethod, toNodeId: NodeId | null, numBytes: ByteCount) {
-        this.#totalBytesSent[method] = addByteCount(this.#totalBytesSent[method], numBytes)
-        this.#totalBytesSent['total'] = addByteCount(this.#totalBytesSent['total'], numBytes)
+    totalMessagesSent() {
+        return this.#messagesSent
     }
-    reportBytesReceived(method: BytesReceivedMethod, fromNodeId: NodeId | null, numBytes: ByteCount) {
-        this.#totalBytesReceived[method] = addByteCount(this.#totalBytesReceived[method], numBytes)
-        this.#totalBytesReceived['total'] = addByteCount(this.#totalBytesReceived['total'], numBytes)
+    totalMessagesReceived() {
+        return this.#messagesReceived
+    }
+    reportBytesSent(numBytes: ByteCount, channelName: ChannelName | null) {
+        if (channelName) this.#bytesSentByChannel.set(channelName, addByteCount(this.#bytesSentByChannel.get(channelName) || byteCount(0), numBytes))
+        this.#bytesSent = addByteCount(this.#bytesSent, numBytes)
+    }
+    reportBytesReceived(numBytes: ByteCount, channelName: ChannelName | null) {
+        if (channelName) this.#bytesReceivedByChannel.set(channelName, addByteCount(this.#bytesReceivedByChannel.get(channelName) || byteCount(0), numBytes))
+        this.#bytesReceived = addByteCount(this.#bytesReceived, numBytes)
+    }
+    reportMessagesSent(numMessages: number, channelName: ChannelName | null) {
+        if (channelName) this.#messagesSentByChannel.set(channelName, (this.#messagesSentByChannel.get(channelName) || 0) + numMessages)
+        this.#messagesSent = this.#messagesSent + numMessages
+    }
+    reportMessagesReceived(numMessages: number, channelName: ChannelName | null) {
+        if (channelName) this.#messagesReceivedByChannel.set(channelName, (this.#messagesReceivedByChannel.get(channelName) || 0) + numMessages)
+        this.#messagesReceived = this.#messagesReceived + numMessages
     }
 }

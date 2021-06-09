@@ -1,6 +1,6 @@
 import DataStreamy, { DataStreamyProgress } from './common/DataStreamy'
 import { formatByteCount, sha1MatchesFileKey } from './common/util'
-import { byteCount, ByteCount, byteCountToNumber, elapsedSince, FileKey, fileKeyHash, FileManifestChunk, isFileManifest, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from './common/types/kacheryTypes'
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, fileKeyHash, FileManifestChunk, isFileManifest, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from './common/types/kacheryTypes'
 import KacheryDaemonNode from './KacheryDaemonNode'
 import axios from 'axios'
 import { httpUrlDownload } from './external/real/httpRequests'
@@ -193,9 +193,9 @@ export const loadFile = async (node: KacheryDaemonNode, fileKey: FileKey, opts: 
     const loadFileWithoutManifest = async (): Promise<DataStreamy> => {
         let timer = nowTimestamp()
         for (let pass = 1; pass <= 2; pass++) {
-            const downloadUrls: UrlString[] | null = await node.kacheryHubInterface().checkForFileInChannelBuckets(fileKey.sha1)
-            if ((downloadUrls) && (downloadUrls.length > 0)) {
-                return await node.kacheryStorageManager().storeFileFromBucketUrl(downloadUrls[0], {sha1: fileKey.sha1, nodeStats: node.stats()})
+            const results: {downloadUrl: UrlString, channelName: ChannelName}[] | null = await node.kacheryHubInterface().checkForFileInChannelBuckets(fileKey.sha1)
+            if ((results) && (results.length > 0)) {
+                return await node.kacheryStorageManager().storeFileFromBucketUrl(results[0].downloadUrl, {sha1: fileKey.sha1, nodeStats: node.stats(), channelName: results[0].channelName})
             }
             if (pass === 1) {
                 const success = await node.kacheryHubInterface().requestFileFromChannels(fileKey)
