@@ -464,6 +464,7 @@ export interface ChannelName extends String {
 export const isChannelName = (x: any): x is ChannelName => {
     if (!isString(x)) return false;
     if (x.length > 40) return false
+    if (x.length < 3) return false
     let result = true
     x.split(".").forEach((element) => {
         if (element.length === 0) result = false

@@ -4,362 +4,14 @@ import JsonSocket from 'json-socket';
 import { Socket } from 'net';
 import { action } from '../common/action';
 import DataStreamy from '../common/DataStreamy';
-import { byteCount, ByteCount, DaemonVersion, DurationMsec, durationMsecToNumber, elapsedSince, ErrorMessage, FeedId, FeedName, FileKey, isArrayOf, isBoolean, isByteCount, isDaemonVersion, isDurationMsec, isFeedId, isFeedName, isFileKey, isJSONObject, isJSONValue, isMessageCount, isNodeId, isNull, isNumber, isObjectOf, isOneOf, isSignedSubfeedMessage, isString, isSubfeedHash, isSubfeedMessage, isSubfeedPosition, isSubfeedWatches, isSubmittedSubfeedMessage, JSONObject, JSONValue, LocalFilePath, mapToObject, messageCount, MessageCount, NodeId, nowTimestamp, optional, Port, scaledDurationMsec, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, SubfeedWatches, SubmittedSubfeedMessage, toSubfeedWatchesRAM, _validateObject } from '../common/types/kacheryTypes';
+import { byteCount, durationMsecToNumber, elapsedSince, isJSONObject, JSONObject, mapToObject, messageCount, nowTimestamp, Port, scaledDurationMsec, toSubfeedWatchesRAM } from '../common/types/kacheryTypes';
 import { sleepMsec } from '../common/util';
 import daemonVersion from '../daemonVersion';
 import { HttpServerInterface } from '../external/ExternalInterface';
 import { isGetStatsOpts, NodeStatsInterface } from '../getStats';
 import KacheryDaemonNode from '../KacheryDaemonNode';
 import { loadFile } from '../loadFile';
-
-export interface DaemonApiProbeResponse {
-    success: boolean,
-    daemonVersion: DaemonVersion,
-    nodeId: NodeId,
-    kacheryStorageDir: LocalFilePath | null
-};
-export const isDaemonApiProbeResponse = (x: any): x is DaemonApiProbeResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        daemonVersion: isDaemonVersion,
-        nodeId: isNodeId,
-        kacheryStorageDir: isOneOf([isNull, isString])
-    }, {allowAdditionalFields: true});
-}
-
-type StoreFileRequestData = {
-    localFilePath: LocalFilePath
-}
-const isStoreFileRequestData = (x: any): x is StoreFileRequestData => {
-    return _validateObject(x, {
-        localFilePath: isString
-    })
-}
-type StoreFileResponseData = {
-    success: boolean
-    error: ErrorMessage | null
-    sha1: Sha1Hash | null
-    manifestSha1: Sha1Hash | null
-}
-
-type LinkFileRequestData = {
-    localFilePath: LocalFilePath
-    size: number
-    mtime: number
-}
-const isLinkFileRequestData = (x: any): x is LinkFileRequestData => {
-    return _validateObject(x, {
-        localFilePath: isString,
-        size: isNumber,
-        mtime: isNumber
-    })
-}
-type LinkFileResponseData = {
-    success: boolean
-    error: ErrorMessage | null
-    sha1: Sha1Hash | null
-    manifestSha1: Sha1Hash | null
-}
-
-// interface Req {
-//     body: any,
-//     on: (eventName: string, callback: () => void) => void,
-//     connection: Socket
-// }
-
-// interface Res {
-//     json: (obj: {
-//         success: boolean
-//     } & JSONObject) => void,
-//     end: () => void,
-//     status: (s: number) => Res,
-//     send: (x: any) => Res
-// }
-
-export interface ApiFindFileRequest {
-    fileKey: FileKey,
-    timeoutMsec: DurationMsec
-}
-const isApiFindFileRequest = (x: any): x is ApiFindFileRequest => {
-    return _validateObject(x, {
-        fileKey: isFileKey,
-        timeoutMsec: isDurationMsec
-    });
-}
-
-export interface ApiLoadFileRequest {
-    fileKey: FileKey
-}
-const isApiLoadFileRequest = (x: any): x is ApiLoadFileRequest => {
-    return _validateObject(x, {
-        fileKey: isFileKey
-    });
-}
-
-export interface ApiDownloadFileDataRequest {
-    fileKey: FileKey,
-    startByte?: ByteCount
-    endByte?: ByteCount
-}
-const isApiDownloadFileDataRequest = (x: any): x is ApiDownloadFileDataRequest => {
-    return _validateObject(x, {
-        fileKey: isFileKey,
-        startByte: optional(isByteCount),
-        endByte: optional(isByteCount),
-    });
-}
-
-export interface FeedApiWatchForNewMessagesRequest {
-    subfeedWatches: SubfeedWatches,
-    waitMsec: DurationMsec,
-    maxNumMessages?: MessageCount,
-    signed?: boolean
-}
-export const isFeedApiWatchForNewMessagesRequest = (x: any): x is FeedApiWatchForNewMessagesRequest => {
-    return _validateObject(x, {
-        subfeedWatches: isSubfeedWatches,
-        waitMsec: isDurationMsec,
-        signed: optional(isBoolean),
-        maxNumMessages: optional(isMessageCount)
-    })
-}
-export interface FeedApiWatchForNewMessagesResponse {
-    success: boolean,
-    messages: {[key: string]: SubfeedMessage[]} | {[key: string]: SignedSubfeedMessage[]}
-}
-export const isFeedApiWatchForNewMessagesResponse = (x: any): x is FeedApiWatchForNewMessagesResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        messages: isOneOf([isObjectOf(isString, isArrayOf(isSubfeedMessage)), isObjectOf(isString, isArrayOf(isSignedSubfeedMessage))])
-    })
-}
-
-export interface MutableApiSetRequest {
-    key: JSONValue
-    value: JSONValue
-}
-export const isMutableApiSetRequest = (x: any): x is MutableApiSetRequest => {
-    return _validateObject(x, {
-        key: isJSONValue,
-        value: isJSONValue
-    })
-}
-export interface MutableApiSetResponse {
-    success: boolean
-}
-export const isMutableApiSetResponse = (x: any): x is MutableApiSetResponse => {
-    return _validateObject(x, {
-        success: isBoolean
-    })
-}
-
-export interface MutableApiGetRequest {
-    key: JSONValue
-}
-export const isMutableApiGetRequest = (x: any): x is MutableApiGetRequest => {
-    return _validateObject(x, {
-        key: isJSONValue
-    })
-}
-export interface MutableApiGetResponse {
-    success: boolean,
-    found: boolean,
-    value: JSONValue
-}
-export const isMutableApiGetResponse = (x: any): x is MutableApiGetResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        found: isBoolean,
-        value: isJSONValue
-    })
-}
-
-export interface MutableApiDeleteRequest {
-    key: JSONValue
-}
-export const isMutableApiDeleteRequest = (x: any): x is MutableApiDeleteRequest => {
-    return _validateObject(x, {
-        key: isJSONValue
-    })
-}
-export interface MutableApiDeleteResponse {
-    success: boolean
-}
-export const isMutableApiDeleteResponse = (x: any): x is MutableApiDeleteResponse => {
-    return _validateObject(x, {
-        success: isBoolean
-    })
-}
-
-export interface FeedApiGetMessagesRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash,
-    position: SubfeedPosition,
-    maxNumMessages: MessageCount,
-    waitMsec: DurationMsec
-}
-export const isFeedApiGetMessagesRequest = (x: any): x is FeedApiGetMessagesRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash,
-        position: isSubfeedPosition,
-        maxNumMessages: isMessageCount,
-        waitMsec: isDurationMsec,
-    });
-}
-export interface FeedApiGetMessagesResponse {
-    success: boolean,
-    messages: SubfeedMessage[]
-}
-export const isFeedApiGetMessagesResponse = (x: any): x is FeedApiGetMessagesResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        messages: isArrayOf(isSubfeedMessage)
-    });
-}
-
-export interface FeedApiGetSignedMessagesRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash,
-    position: SubfeedPosition,
-    maxNumMessages: MessageCount,
-    waitMsec: DurationMsec
-}
-export const isFeedApiGetSignedMessagesRequest = (x: any): x is FeedApiGetSignedMessagesRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash,
-        position: isSubfeedPosition,
-        maxNumMessages: isMessageCount,
-        waitMsec: isDurationMsec,
-    });
-}
-export interface FeedApiGetSignedMessagesResponse {
-    success: boolean,
-    signedMessages: SignedSubfeedMessage[]
-}
-export const isFeedApiGetSignedMessagesResponse = (x: any): x is FeedApiGetSignedMessagesResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        signedMessages: isArrayOf(isSignedSubfeedMessage)
-    });
-}
-
-export interface FeedApiCreateFeedRequest {
-    feedName?: FeedName
-}
-export const isFeedApiCreateFeedRequest = (x: any): x is FeedApiCreateFeedRequest => {
-    return _validateObject(x, {
-        feedName: optional(isFeedName)
-    });
-}
-export interface FeedApiCreateFeedResponse {
-    success: boolean,
-    feedId: FeedId
-}
-export const isFeedApiCreateFeedResponse = (x: any): x is FeedApiCreateFeedResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        feedId: isFeedId
-    });
-}
-
-export interface FeedApiAppendMessagesRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash,
-    messages: SubfeedMessage[]
-}
-export const isFeedApiAppendMessagesRequest = (x: any): x is FeedApiAppendMessagesRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash,
-        messages: isArrayOf(isSubfeedMessage)
-    });
-}
-export interface FeedApiAppendMessagesResponse {
-    success: boolean
-}
-export const isFeedApiAppendMessagesResponse = (x: any): x is FeedApiAppendMessagesResponse => {
-    return _validateObject(x, {
-        success: isBoolean
-    });
-}
-
-export interface FeedApiGetNumLocalMessagesRequest {
-    feedId: FeedId,
-    subfeedHash: SubfeedHash
-}
-export const isFeedApiGetNumLocalMessagesRequest = (x: any): x is FeedApiGetNumLocalMessagesRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId,
-        subfeedHash: isSubfeedHash
-    });
-}
-export interface FeedApiGetNumLocalMessagesResponse {
-    success: boolean,
-    numMessages: MessageCount
-}
-export const isFeedApiGetNumLocalMessagesResponse = (x: any): x is FeedApiGetNumLocalMessagesResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        numMessages: isMessageCount
-    });
-}
-
-export interface FeedApiGetFeedInfoRequest {
-    feedId: FeedId
-}
-export const isFeedApiGetFeedInfoRequest = (x: any): x is FeedApiGetFeedInfoRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId
-    });
-}
-export interface FeedApiGetFeedInfoResponse {
-    success: boolean,
-    isWriteable: boolean,
-}
-export const isFeedApiGetFeedInfoResponse = (x: any): x is FeedApiGetFeedInfoResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        isWriteable: isBoolean
-    })
-}
-
-export interface FeedApiDeleteFeedRequest {
-    feedId: FeedId
-}
-export const isFeedApiDeleteFeedRequest = (x: any): x is FeedApiDeleteFeedRequest => {
-    return _validateObject(x, {
-        feedId: isFeedId
-    });
-}
-export interface FeedApiDeleteFeedResponse {
-    success: boolean
-}
-export const isFeedApiDeleteFeedResponse = (x: any): x is FeedApiDeleteFeedResponse => {
-    return _validateObject(x, {
-        success: isBoolean
-    });
-}
-
-export interface FeedApiGetFeedIdRequest {
-    feedName: FeedName
-}
-export const isFeedApiGetFeedIdRequest = (x: any): x is FeedApiGetFeedIdRequest => {
-    return _validateObject(x, {
-        feedName: isFeedName
-    });
-}
-export interface FeedApiGetFeedIdResponse {
-    success: boolean,
-    feedId: FeedId | null
-}
-export const isFeedApiGetFeedIdResponse = (x: any): x is FeedApiGetFeedIdResponse => {
-    return _validateObject(x, {
-        success: isBoolean,
-        feedId: isOneOf([isNull, isFeedId])
-    });
-}
+import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskLoadTaskResultRequest, isTaskRegisterTaskFunctionsRequest, isTaskUpdateTaskStatusRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, RequestedTask, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskLoadTaskResultResponse, TaskRegisterTaskFunctionsResponse, TaskUpdateTaskStatusResponse } from './daemonApiTypes';
 
 export default class DaemonApiServer {
     #node: KacheryDaemonNode
@@ -482,6 +134,30 @@ export default class DaemonApiServer {
             path: '/mutable/set',
             handler: async (reqData: JSONObject) => {return await this._handleMutableApiSet(reqData)},
             browserAccess: true
+        },
+        {
+            // /task/registerTaskFunctions
+            path: '/task/registerTaskFunctions',
+            handler: async (reqData: JSONObject) => {return await this._handleTaskRegisterTaskFunctions(reqData)},
+            browserAccess: true
+        },
+        {
+            // /task/updateTaskStatus
+            path: '/task/updateTaskStatus',
+            handler: async (reqData: JSONObject) => {return await this._handleTaskUpdateTaskStatus(reqData)},
+            browserAccess: true
+        },
+        {
+            // /task/createSignedTaskResultUploadUrl
+            path: '/task/createSignedTaskResultUploadUrl',
+            handler: async (reqData: JSONObject) => {return await this._handleTaskCreateSignedTaskResultUploadUrl(reqData)},
+            browserAccess: true
+        },
+        {
+            // /task/loadTaskResult
+            path: '/task/loadTaskResult',
+            handler: async (reqData: JSONObject) => {return await this._handleTaskLoadTaskResult(reqData)},
+            browserAccess: true
         }
     ]
 
@@ -502,7 +178,7 @@ export default class DaemonApiServer {
         this.#app.use(cors1); // in the future, if we want to do this
         this.#app.use(express.json());
 
-        const dummyMiddleware = (req: Request, res: Response, next: () => void) => {next()}
+        // const dummyMiddleware = (req: Request, res: Response, next: () => void) => {next()}
         
         this.#simpleGetHandlers.forEach(h => {
             this.#app.get(h.path, async (req, res) => {
@@ -774,7 +450,7 @@ export default class DaemonApiServer {
             x.cancel()
         });
     }
-    // /loadFile - download data for a file - must already be on this node
+    // /loadFileData - download data for a file - must already be on this node
     /* istanbul ignore next */
     async _apiDownloadFileData(req: Request, res: Response): Promise<void> {
         const apiDownloadFileDataRequest = req.body
@@ -985,6 +661,60 @@ export default class DaemonApiServer {
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
         return response
     }
+    // /task/registerTaskFunctions
+    async _handleTaskRegisterTaskFunctions(reqData: JSONObject) {
+        /* istanbul ignore next */
+        if (!isTaskRegisterTaskFunctionsRequest(reqData)) throw Error('Invalid request in _handleTaskRegisterTaskFunctions')
+        const { taskFunctions, timeoutMsec } = reqData
+
+        const requestedTasks: RequestedTask[] = await this.#node.kacheryHubInterface().registerTaskFunctions({taskFunctions, timeoutMsec})
+
+        const response: TaskRegisterTaskFunctionsResponse = {success: true, requestedTasks}
+        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+        return response
+    }
+    // /task/updateTaskStatus
+    async _handleTaskUpdateTaskStatus(reqData: JSONObject) {
+        /* istanbul ignore next */
+        if (!isTaskUpdateTaskStatusRequest(reqData)) throw Error('Invalid request in _handleTaskUpdateTaskStatus')
+        const { channelName, taskHash, status, errorMessage } = reqData
+
+        await this.#node.kacheryHubInterface().updateTaskStatus({channelName, taskHash, status, errorMessage})
+
+        const response: TaskUpdateTaskStatusResponse = {success: true}
+        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+        return response
+    }
+    // /task/createSignedTaskResultUploadUrl
+    async _handleTaskCreateSignedTaskResultUploadUrl(reqData: JSONObject) {
+        /* istanbul ignore next */
+        if (!isTaskCreateSignedTaskResultUploadUrlRequest(reqData)) throw Error('Invalid request in _handleTaskCreateSignedTaskResultUploadUrl')
+        const { channelName, taskHash, size } = reqData
+
+        const signedUrl = await this.#node.kacheryHubInterface().createSignedTaskResultUploadUrl({channelName, taskHash, size})
+
+        const response: TaskCreateSignedTaskResultUploadUrlResponse = {success: true, signedUrl}
+        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+        return response
+    }
+    // /task/loadTaskResult
+    async _handleTaskLoadTaskResult(reqData: JSONObject) {
+        /* istanbul ignore next */
+        if (!isTaskLoadTaskResultRequest(reqData)) throw Error('Invalid request in _handleTaskLoadTaskResult')
+        const { channelName, taskFunctionId, taskKwargs, timeoutMsec } = reqData
+
+        const result = await this.#node.kacheryHubInterface().loadTaskResultFromChannel({channelName, taskFunctionId, taskKwargs, timeoutMsec})
+
+        const response: TaskLoadTaskResultResponse = {
+            success: true,
+            status: result.status,
+            taskHash: result.taskHash,
+            taskResultUrl: result.taskResultUrl,
+            errorMessage: result.errorMessage
+        }
+        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+        return response
+    }
     // Helper function for returning http request with an error response
     /* istanbul ignore next */
     async _errorResponse(req: Request, res: Response, code: number, errorString: string) {
@@ -1019,8 +749,4 @@ export default class DaemonApiServer {
         }
         return true
     }
-}
-
-const isLocalRequest = (req: Request) => {
-    return (req.socket.localAddress === req.socket.remoteAddress);
 }

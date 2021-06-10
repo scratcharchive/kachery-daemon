@@ -9,6 +9,8 @@ import { getStats, GetStatsOpts } from './getStats'
 import KacheryHubInterface from './kacheryHub/KacheryHubInterface'
 import MutableManager from './mutables/MutableManager'
 import NodeStats from './NodeStats'
+import IncomingTaskManager from './tasks/IncomingTaskManager'
+import OutgoingTaskManager from './tasks/outgoingTaskManager'
 
 export interface KacheryDaemonNodeOpts {
     kacheryHubUrl: string
@@ -60,8 +62,8 @@ class KacheryDaemonNode {
         this.#kacheryHubInterface.onRequestSubfeed((channelName, feedId, subfeedHash, position) => {
             this.#feedManager.createOrRenewIncomingSubfeedSubscription(channelName, feedId, subfeedHash, position)
         })
-        this.#kacheryHubInterface.onSubfeedMessageCountUpdate((feedId, subfeedHash, channelName, messageCount) => {
-            this.#feedManager.reportSubfeedMessageCountUpdate(feedId, subfeedHash, channelName, messageCount)
+        this.#kacheryHubInterface.onUpdateSubfeedMessageCount((channelName, feedId, subfeedHash, messageCount) => {
+            this.#feedManager.reportSubfeedMessageCountUpdate(channelName, feedId, subfeedHash, messageCount)
         })
 
         const signedFileUploadUrlCallback: SignedFileUploadUrlCallback = async (a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) => {

@@ -121,12 +121,42 @@ export const isCreateSignedSubfeedMessageUploadUrlResponse = (x: any): x is Crea
     })
 }
 
+export type CreateSignedTaskResultUploadUrlRequestBody = {
+    type: 'createSignedTaskResultUploadUrl'
+    nodeId: NodeId
+    ownerId: UserId
+    channelName: ChannelName
+    taskHash: Sha1Hash
+    size: ByteCount
+}
+
+export const isCreateSignedTaskResultUploadUrlRequestBody = (x: any): x is CreateSignedTaskResultUploadUrlRequestBody => {
+    return _validateObject(x, {
+        type: isEqualTo('createSignedTaskResultUploadUrl'),
+        nodeId: isNodeId,
+        ownerId: isUserId,
+        channelName: isChannelName,
+        taskHash: isSha1Hash,
+        size: isByteCount
+    })
+}
+
+export type CreateSignedTaskResultUploadUrlResponse = {
+    signedUrl: UrlString
+}
+
+export const isCreateSignedTaskResultUploadUrlResponse = (x: any): x is CreateSignedTaskResultUploadUrlResponse => {
+    return _validateObject(x, {
+        signedUrl: isUrlString
+    })
+}
+
 export type KacheryNodeRequestBody =
-    ReportRequestBody | GetNodeConfigRequestBody | GetPubsubAuthForChannelRequestBody | CreateSignedFileUploadUrlRequestBody | CreateSignedSubfeedMessageUploadUrlRequestBody
+    ReportRequestBody | GetNodeConfigRequestBody | GetPubsubAuthForChannelRequestBody | CreateSignedFileUploadUrlRequestBody | CreateSignedSubfeedMessageUploadUrlRequestBody | CreateSignedTaskResultUploadUrlRequestBody
 
 export const isKacheryNodeRequestBody = (x: any): x is KacheryNodeRequestBody => {
     return isOneOf([
-        isReportRequestBody, isGetNodeConfigRequestBody, isGetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlRequestBody, isCreateSignedSubfeedMessageUploadUrlRequestBody
+        isReportRequestBody, isGetNodeConfigRequestBody, isGetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlRequestBody, isCreateSignedSubfeedMessageUploadUrlRequestBody, isCreateSignedTaskResultUploadUrlRequestBody
     ])(x)
 }
 

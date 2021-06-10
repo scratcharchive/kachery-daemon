@@ -194,13 +194,13 @@ export const isNodeConfig = (x: any): x is NodeConfig => {
 }
 
 export type Auth = {
-    userId?: string,
+    userId?: UserId,
     googleIdToken?: string
 }
 
 export const isAuth = (x: any): x is Auth => {
     return _validateObject(x, {
-            userId: optional(isString),
+            userId: optional(isUserId),
             googleIdToken: optional(isString)
     })
 }

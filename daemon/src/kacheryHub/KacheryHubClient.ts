@@ -2,7 +2,7 @@ import Ably from 'ably'
 import axios from "axios"
 import { getSignature, nodeIdToPublicKey, publicKeyHexToNodeId, publicKeyToHex, verifySignature } from "../common/types/crypto_util"
 import { isNodeConfig, isPubsubAuth, PubsubAuth } from "../common/types/kacheryHubTypes"
-import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isGetNodeConfigResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
+import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, isCreateSignedTaskResultUploadUrlResponse, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isGetNodeConfigResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
 import { ByteCount, ChannelName, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, UserId } from "../common/types/kacheryTypes"
 import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../common/types/pubsubMessages'
 import { randomAlphaString } from "../common/util"
@@ -98,6 +98,23 @@ class KacheryHubClient {
             throw Error('Unexpected response for createSignedFileUploadUrl')
         }
         return x.signedUrls
+    }
+    async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskHash: Sha1Hash, size: ByteCount}) {
+        if (!this.opts.ownerId) throw Error('No owner ID in createSignedTaskResultUploadUrl')
+        const {channelName, taskHash, size} = a
+        const reqBody: CreateSignedTaskResultUploadUrlRequestBody = {
+            type: 'createSignedTaskResultUploadUrl',
+            nodeId: this.nodeId,
+            ownerId: this.opts.ownerId,
+            channelName,
+            taskHash,
+            size
+        }
+        const x = await this._sendRequest(reqBody)
+        if (!isCreateSignedTaskResultUploadUrlResponse(x)) {
+            throw Error('Unexpected response for createSignedTaskResultUploadUrl')
+        }
+        return x.signedUrl
     }
     public get nodeId() {
         return publicKeyHexToNodeId(publicKeyToHex(this.opts.keyPair.publicKey))

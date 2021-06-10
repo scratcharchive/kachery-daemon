@@ -1,14 +1,25 @@
 import axios from "axios";
+import computeTaskHash from "../common/computeTaskHash";
 import { getSignature } from "../common/types/crypto_util";
 import { NodeConfig } from "../common/types/kacheryHubTypes";
-import { ByteCount, ChannelName, elapsedSince, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, KeyPair, MessageCount, NodeId, NodeLabel, nowTimestamp, pubsubChannelName, PubsubChannelName, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskKwargs, urlString, UrlString, UserId, _validateObject } from "../common/types/kacheryTypes";
-import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, RequestFileMessageBody, RequestSubfeedMessageBody, SubfeedMessageCountUpdateMessageBody, UploadFileStatusMessageBody } from "../common/types/pubsubMessages";
+import { ByteCount, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, KeyPair, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskKwargs, urlString, UrlString, UserId, _validateObject } from "../common/types/kacheryTypes";
+import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, RequestFileMessageBody, RequestSubfeedMessageBody, RequestTaskResultMessageBody, UpdateSubfeedMessageCountMessageBody, UpdateTaskStatusMessageBody, UploadFileStatusMessageBody } from "../common/types/pubsubMessages";
 import { urlFromUri } from '../common/util';
 import NodeStats from "../NodeStats";
+import { RegisteredTaskFunction, RequestedTask, TaskStatus } from "../services/daemonApiTypes";
+import IncomingTaskManager from "../tasks/IncomingTaskManager";
+import OutgoingTaskManager from "../tasks/outgoingTaskManager";
 import GoogleObjectStorageClient from "./GoogleObjectStorageClient";
 import KacheryHubClient, { IncomingKacheryHubPubsubMessage } from "./KacheryHubClient";
 
 type IncomingFileRequestCallback = (args: {fileKey: FileKey, fromNodeId: NodeId, channelName: ChannelName}) => void
+
+type LoadTaskResult = {
+    status: TaskStatus
+    taskHash: Sha1Hash
+    taskResultUrl?: UrlString
+    errorMessage?: ErrorMessage
+}
 
 class KacheryHubInterface {
     #kacheryHubClient: KacheryHubClient
@@ -18,13 +29,17 @@ class KacheryHubInterface {
     #onInitializedCallbacks: (() => void)[] = []
     #incomingFileRequestCallbacks: IncomingFileRequestCallback[] = []
     #requestSubfeedCallbacks: ((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void)[] = []
-    #subfeedMessageCountUpdateCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName, messageCount: MessageCount) => void)[] = []
+    #updateSubfeedMessageCountCallbacks: ((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) => void)[] = []
+    #incomingTaskManager: IncomingTaskManager
+    #outgoingTaskManager: OutgoingTaskManager
     constructor(private opts: {keyPair: KeyPair, ownerId?: UserId, nodeLabel: NodeLabel, kacheryHubUrl: string, nodeStats: NodeStats}) {
         const {keyPair, ownerId, nodeLabel, kacheryHubUrl} = opts
         this.#kacheryHubClient = new KacheryHubClient({keyPair, ownerId, nodeLabel, kacheryHubUrl})
         this.#kacheryHubClient.onIncomingPubsubMessage((x: IncomingKacheryHubPubsubMessage) => {
             this._handleKacheryHubPubsubMessage(x)
         })
+        this.#incomingTaskManager = new IncomingTaskManager()
+        this.#outgoingTaskManager = new OutgoingTaskManager()
         this.initialize()
     }
     client() {
@@ -150,8 +165,8 @@ class KacheryHubInterface {
     onRequestSubfeed(cb: (channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void) {
         this.#requestSubfeedCallbacks.push(cb)
     }
-    onSubfeedMessageCountUpdate(callback: (feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName, messageCount: MessageCount) => void) {
-        this.#subfeedMessageCountUpdateCallbacks.push(callback)
+    onUpdateSubfeedMessageCount(callback: (channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) => void) {
+        this.#updateSubfeedMessageCountCallbacks.push(callback)
     }
     async sendUploadFileStatusMessage(args: {channelName: ChannelName, fileKey: FileKey, status: 'started' | 'finished'}) {
         const {channelName, fileKey, status} = args
@@ -173,10 +188,13 @@ class KacheryHubInterface {
     async createSignedSubfeedMessageUploadUrls(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
         return this.#kacheryHubClient.createSignedSubfeedMessageUploadUrls(a)
     }
+    async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskHash: Sha1Hash, size: ByteCount}) {
+        return this.#kacheryHubClient.createSignedTaskResultUploadUrl(a)
+    }
     async reportToChannelSubfeedMessagesAdded(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) {
         await this.initialize()
-        const msg: SubfeedMessageCountUpdateMessageBody = {
-            type: 'subfeedMessageCountUpdate',
+        const msg: UpdateSubfeedMessageCountMessageBody = {
+            type: 'updateSubfeedMessageCount',
             feedId,
             subfeedHash,
             messageCount: numMessages
@@ -205,28 +223,35 @@ class KacheryHubInterface {
             this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-requestFeeds`), msg)
         }
     }
-    async requestTaskResultFromChannel(channelName: ChannelName, taskFunctionId: TaskFunctionId, kwargs: TaskKwargs) {
+    async _requestTaskResultFromChannel(channelName: ChannelName, taskFunctionId: TaskFunctionId, kwargs: TaskKwargs) {
         await this.initialize()
-        throw Error('kacheryhub todo')
-        // const nodeConfig = this.#nodeConfig
-        // if (!nodeConfig) return
-        // const channelNames: string[] = []
-        // for (let channelMembership of (nodeConfig.channelMemberships || [])) {
-        //     if (channelMembership.roles.requestFeeds) {
-        //         if ((channelMembership.authorization) && (channelMembership.authorization.permissions.requestFeeds)) {
-        //             channelNames.push(channelMembership.channelName)
-        //         }
-        //     }
-        // }
-        // const msg: RequestSubfeedMessageBody = {
-        //     type: 'requestSubfeed',
-        //     feedId,
-        //     subfeedHash,
-        //     position
-        // }
-        // for (let channelName of channelNames) {
-        //     this._publishMessageToPubsubChannel(channelName, `${channelName}-requestFeeds`, msg)
-        // }
+        const nodeConfig = this.#nodeConfig
+        if (!nodeConfig) {
+            throw Error('Problem initializing kacheryhub interface')
+        }
+        const channelMembership = (nodeConfig.channelMemberships || []).filter(cm => (cm.channelName === channelName))[0]
+        if (!channelMembership) {
+            throw Error(`Not a member of channel: ${channelName}`)
+        }
+        const roles = channelMembership.roles
+        const permissions = (channelMembership.authorization || {}).permissions
+        if (!permissions) {
+            throw Error(`No permissions on channel: ${channelName}`)
+        }
+        if (!permissions.requestTaskResults) {
+            throw Error(`This node does not have permission to request task results on channel: ${channelName}`)
+        }
+        if (!roles.requestTaskResults) {
+            throw Error(`This node does not have role to request task results on channel: ${channelName}`)
+        }
+        const taskHash = computeTaskHash(taskFunctionId, kwargs)
+        const msg: RequestTaskResultMessageBody = {
+            type: 'requestTaskResult',
+            taskHash,
+            taskFunctionId,
+            taskKwargs: kwargs
+        }
+        this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-requestTaskResults`), msg)
     }
     async downloadSignedSubfeedMessages(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, start: MessageCount, end: MessageCount): Promise<SignedSubfeedMessage[]> {
         await this.initialize()
@@ -269,7 +294,7 @@ class KacheryHubInterface {
         }
         return ret
     }
-    async getChannelBucketName(channelName: ChannelName) {
+    async getChannelBucketUri(channelName: ChannelName) {
         await this.initialize()
         const channelMembership = this._getChannelMembership(channelName)
         if (!channelMembership) throw Error(`Not a member of channel: ${channelName}`)
@@ -277,6 +302,10 @@ class KacheryHubInterface {
         if (!channelBucketUri) {
             throw Error(`No bucket uri for channel: ${channelName}`)
         }
+        return channelBucketUri
+    }
+    async getChannelBucketName(channelName: ChannelName) {
+        const channelBucketUri = await this.getChannelBucketUri(channelName)
         const channelBucketName = bucketNameFromUri(channelBucketUri)
         return channelBucketName
     }
@@ -293,6 +322,103 @@ class KacheryHubInterface {
             throw Error(`Problem with subfeed.json for ${subfeedPath} on ${channelBucketName}`)
         }
         return subfeedJson
+    }
+    async updateTaskStatus(args: {channelName: ChannelName, taskHash: Sha1Hash, status: TaskStatus, errorMessage: ErrorMessage | undefined}) {
+        const { channelName, taskHash, status } = args
+        await this.initialize()
+        const nodeConfig = this.#nodeConfig
+        if (!nodeConfig) {
+            throw Error('Problem initializing kacheryhub interface')
+        }
+        const channelMembership = (nodeConfig.channelMemberships || []).filter(cm => (cm.channelName === channelName))[0]
+        if (!channelMembership) {
+            throw Error(`Not a member of channel: ${channelName}`)
+        }
+        const roles = channelMembership.roles
+        const permissions = (channelMembership.authorization || {}).permissions
+        if (!permissions) {
+            throw Error(`No permissions for updating task status for channel: ${channelName}`)
+        }
+        if (!permissions.provideTaskResults) {
+            throw Error(`This nodes does not have the provideTaskResults permissions for channel: ${channelName}`)
+        }
+        if (!roles.provideTaskResults) {
+            throw Error(`This nodes does not have the provideTaskResults role for channel: ${channelName}`)
+        }
+        const pcn = pubsubChannelName(`${channelName}-provideTaskResults`)
+        const msg: UpdateTaskStatusMessageBody = {
+            type: 'updateTaskStatus',
+            taskHash,
+            status,
+            errorMessage: args.errorMessage
+        }
+        this._publishMessageToPubsubChannel(channelName, pcn, msg)
+    }
+    async registerTaskFunctions(args: {taskFunctions: RegisteredTaskFunction[], timeoutMsec: DurationMsec}): Promise<RequestedTask[]> {
+        return this.#incomingTaskManager.registerTaskFunctions(args)
+    }
+    async loadTaskResultFromChannel(args: {channelName: ChannelName, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, timeoutMsec: DurationMsec}): Promise<LoadTaskResult> {
+        await this.initialize()
+
+        const { channelName, taskFunctionId, taskKwargs, timeoutMsec } = args
+        const channelBucketUri = await this.getChannelBucketUri(channelName)
+        const channelBucketUrl = urlFromUri(channelBucketUri)
+        const taskHash = computeTaskHash(taskFunctionId, taskKwargs)
+        const url = urlString(`${channelBucketUrl}/task_results/${pathifyHash(taskHash)}`)
+        const exists = await checkUrlExists(url)
+        if (exists) {
+            return {
+                status: 'finished',
+                taskHash,
+                taskResultUrl: url
+            }
+        }
+    
+        return new Promise<LoadTaskResult>((resolve, reject) => {
+            let complete = false
+            let _status: TaskStatus = 'waiting'
+            const _return = (result: LoadTaskResult) => {
+                if (complete) return
+                complete = true
+                cancelListener()
+                resolve(result)
+            }
+            this._requestTaskResultFromChannel(channelName, taskFunctionId, taskKwargs)
+            const {cancelListener} = this.#outgoingTaskManager.listenForTaskStatusUpdates(channelName, taskHash, (status: TaskStatus, errMsg: ErrorMessage | undefined) => {
+                if (complete) return
+                _status = status
+                if (status === 'error') {
+                    _return({
+                        status,
+                        taskHash,
+                        errorMessage: errMsg
+                    })
+                }
+                else if (status === 'finished') {
+                    checkUrlExists(url).then(() => {
+                        _return({
+                            status,
+                            taskHash,
+                            taskResultUrl: url
+                        })
+                    }).catch(() => {
+                        _return({
+                            status: 'error',
+                            taskHash,
+                            errorMessage: errorMessage('Task finished but result does not exist on bucket.')
+                        })
+                    })
+                    
+                }
+            })
+            setTimeout(() => {
+                if (complete) return
+                _return({
+                    status: _status,
+                    taskHash
+                })
+            }, durationMsecToNumber(timeoutMsec))
+        })
     }
     _getChannelMembership(channelName: ChannelName) {
         if (!this.#nodeConfig) return
@@ -344,14 +470,28 @@ class KacheryHubInterface {
                 })
             }
         }
-        else if (msg.type === 'subfeedMessageCountUpdate') {
+        else if (msg.type === 'updateSubfeedMessageCount') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-provideFeeds`)) {
-                console.warn(`Unexpected pubsub channel for subfeedMessageCountUpdate: ${x.pubsubChannelName}`)
+                console.warn(`Unexpected pubsub channel for updateSubfeedMessageCount: ${x.pubsubChannelName}`)
                 return
             }
-            this.#subfeedMessageCountUpdateCallbacks.forEach(cb => {
-                cb(msg.feedId, msg.subfeedHash, x.channelName, msg.messageCount)
+            this.#updateSubfeedMessageCountCallbacks.forEach(cb => {
+                cb(x.channelName, msg.feedId, msg.subfeedHash, msg.messageCount)
             })
+        }
+        else if (msg.type === 'updateTaskStatus') {
+            if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-provideTaskResults`)) {
+                console.warn(`Unexpected pubsub channel for updateTaskStatus: ${x.pubsubChannelName}`)
+                return
+            }
+            this.#outgoingTaskManager.updateTaskStatus(x.channelName, msg.taskHash, msg.status, msg.errorMessage)
+        }
+        else if (msg.type === 'requestTaskResult') {
+            if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-requestTaskResults`)) {
+                console.warn(`Unexpected pubsub channel for requestTaskResult: ${x.pubsubChannelName}`)
+                return
+            }
+            this.#incomingTaskManager.requestTaskResult(x.channelName, msg.taskHash, msg.taskFunctionId, msg.taskKwargs)
         }
     }
     async _doInitialize() {
@@ -383,6 +523,14 @@ class KacheryHubInterface {
                 if ((au.permissions.provideFeeds) && (cm.roles.provideFeeds)) {
                     // if we are providing feeds, then we need to listen to requestFeeds channel
                     subscribeToPubsubChannels.push(pubsubChannelName(`${cm.channelName}-requestFeeds`))
+                }
+                if ((au.permissions.requestTaskResults) && (cm.roles.requestTaskResults)) {
+                    // if we are requesting task results, then we need to listen to provideTaskResults channel
+                    subscribeToPubsubChannels.push(pubsubChannelName(`${cm.channelName}-provideTaskResults`))
+                }
+                if ((au.permissions.provideTaskResults) && (cm.roles.provideTaskResults)) {
+                    // if we are providing task results, then we need to listen to requestTaskResults channel
+                    subscribeToPubsubChannels.push(pubsubChannelName(`${cm.channelName}-provideTaskResults`))
                 }
                 // todo: think about how to handle case where authorization has changed, and so we need to subscribe to different pubsub channels
                 // for now, the channel is not recreated

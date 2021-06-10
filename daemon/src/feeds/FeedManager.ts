@@ -190,7 +190,7 @@ class FeedManager {
             await this._reportSubfeedUpdateToChannel(channelName, feedId, subfeedHash, subfeed.getNumLocalMessages())
         }
     }
-    async reportSubfeedMessageCountUpdate(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName, messageCount: MessageCount) {
+    async reportSubfeedMessageCountUpdate(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) {
         if (this.#outgoingSubfeedSubscriptionManager.hasSubfeedSubscription(feedId, subfeedHash)) {
             const subfeed = await this._loadSubfeed(feedId, subfeedHash)
             subfeed.reportNumRemoteMessages(channelName, messageCount)

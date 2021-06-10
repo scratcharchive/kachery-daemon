@@ -1,4 +1,5 @@
-import { FeedId, FileKey, isEqualTo, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isSubfeedHash, isSubfeedPosition, MessageCount, NodeId, Signature, subfeedHash, SubfeedHash, SubfeedPosition, _validateObject } from "./kacheryTypes";
+import { isTaskStatus, TaskStatus } from "../../services/daemonApiTypes";
+import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSha1Hash, isSignature, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskKwargs, MessageCount, NodeId, optional, Sha1Hash, Signature, subfeedHash, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskKwargs, _validateObject } from "./kacheryTypes";
 
 export type RequestFileMessageBody = {
     type: 'requestFile',
@@ -26,16 +27,16 @@ export const isUploadFileStatusMessageBody = (x: any): x is UploadFileStatusMess
     })
 }
 
-export type SubfeedMessageCountUpdateMessageBody = {
-    type: 'subfeedMessageCountUpdate',
+export type UpdateSubfeedMessageCountMessageBody = {
+    type: 'updateSubfeedMessageCount',
     feedId: FeedId,
     subfeedHash: SubfeedHash,
     messageCount: MessageCount
 }
 
-export const isSubfeedMessageCountUpdateMessageBody = (x: any): x is SubfeedMessageCountUpdateMessageBody => {
+export const isUpdateSubfeedMessageCountMessageBody = (x: any): x is UpdateSubfeedMessageCountMessageBody => {
     return _validateObject(x, {
-        type: isEqualTo('subfeedMessageCountUpdate'),
+        type: isEqualTo('updateSubfeedMessageCount'),
         feedId: isFeedId,
         subfeedHash: isSubfeedHash,
         messageCount: isMessageCount
@@ -58,14 +59,50 @@ export const isRequestSubfeedMessageBody = (x: any): x is RequestSubfeedMessageB
     })
 }
 
-export type KacheryHubPubsubMessageBody = RequestFileMessageBody | UploadFileStatusMessageBody | SubfeedMessageCountUpdateMessageBody | RequestSubfeedMessageBody
+export type UpdateTaskStatusMessageBody = {
+    type: 'updateTaskStatus',
+    taskHash: Sha1Hash,
+    status: TaskStatus,
+    errorMessage?: ErrorMessage
+}
+
+export const isUpdateTaskStatusMessageBody = (x: any): x is UpdateTaskStatusMessageBody => {
+    return _validateObject(x, {
+        type: isEqualTo('updateTaskStatus'),
+        taskHash: isSha1Hash,
+        status: isTaskStatus,
+        errorMessage: optional(isErrorMessage)
+    })
+}
+
+export type RequestTaskResultMessageBody = {
+    type: 'requestTaskResult',
+    taskHash: Sha1Hash,
+    taskFunctionId: TaskFunctionId,
+    taskKwargs: TaskKwargs
+}
+
+export const isRequestTaskResultMessageBody = (x: any): x is RequestTaskResultMessageBody => {
+    return _validateObject(x, {
+        type: isEqualTo('requestTaskResult'),
+        taskHash: isSha1Hash,
+        taskFunctionId: isTaskFunctionId,
+        taskKwargs: isTaskKwargs
+    })
+}
+
+
+
+export type KacheryHubPubsubMessageBody = RequestFileMessageBody | UploadFileStatusMessageBody | UpdateSubfeedMessageCountMessageBody | RequestSubfeedMessageBody | UpdateTaskStatusMessageBody | RequestTaskResultMessageBody
 
 export const isKacheryHubPubsubMessageBody = (x: any): x is KacheryHubPubsubMessageBody => {
     return isOneOf([
         isRequestFileMessageBody,
         isUploadFileStatusMessageBody,
-        isSubfeedMessageCountUpdateMessageBody,
-        isRequestSubfeedMessageBody
+        isUpdateSubfeedMessageCountMessageBody,
+        isRequestSubfeedMessageBody,
+        isUpdateTaskStatusMessageBody,
+        isRequestTaskResultMessageBody
     ])(x)
 }
 
