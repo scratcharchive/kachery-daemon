@@ -1,4 +1,4 @@
-import { JSONObject, sha1OfObject, TaskFunctionId, TaskKwargs } from "./types/kacheryTypes";
+import { isTaskHash, JSONObject, sha1OfObject, TaskFunctionId, TaskHash, TaskKwargs } from "./types/kacheryTypes";
 
 const computeTaskHash = (taskFunctionId: TaskFunctionId, kwargs: TaskKwargs) => {
     const taskData = {
@@ -6,7 +6,8 @@ const computeTaskHash = (taskFunctionId: TaskFunctionId, kwargs: TaskKwargs) => 
         kwargs
     } as any as JSONObject
     const taskHash = sha1OfObject(taskData)
-    return taskHash
+    if (!isTaskHash(taskHash)) throw Error('Unexpected in computeTaskHash')
+    return taskHash as TaskHash
 }
 
 export default computeTaskHash

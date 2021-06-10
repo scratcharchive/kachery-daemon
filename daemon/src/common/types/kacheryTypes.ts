@@ -415,6 +415,23 @@ export const isSha1Hash = (x: any) : x is Sha1Hash => {
     return isHexadecimal(x, 40); // Sha1 should be 40 hex characters
 }
 
+// TaskHash
+export interface TaskHash extends String {
+    __taskHash__: never // phantom type
+}
+export const isTaskHash = (x: any) : x is TaskHash => {
+    if (!isString(x)) return false;
+    return isHexadecimal(x, 40); // Sha1 should be 40 hex characters
+}
+
+//TaskStatus
+export type TaskStatus = 'waiting' | 'pending' | 'running' | 'finished' | 'error'
+
+export const isTaskStatus = (x: any): x is TaskStatus => {
+    if (!isString(x)) return false
+    return ['waiting', 'pending', 'running', 'finished', 'error'].includes(x)
+}
+
 // Signature
 export interface Signature extends String {
     __signature__: never
@@ -527,7 +544,6 @@ export const isTaskKwargs = (x: any): x is TaskKwargs => {
     if (!isJSONObject(x)) return false
     return true
 }
-
 
 // ErrorMessage
 export interface ErrorMessage extends String {
@@ -893,7 +909,7 @@ export const channelConfigUrl = (x: string): ChannelConfigUrl => {
 
 export const sleepMsec = (m: number) => new Promise(r => setTimeout(r, m));
 
-export const pathifyHash = (x: Sha1Hash | FeedId | SubfeedHash) => {
+export const pathifyHash = (x: Sha1Hash | FeedId | SubfeedHash | TaskHash) => {
     return `${x[0]}${x[1]}/${x[2]}${x[3]}/${x[4]}${x[5]}/${x}`
 }
 

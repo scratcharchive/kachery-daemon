@@ -1,41 +1,66 @@
 import GarbageMap from "../common/GarbageMap";
-import { channelName, ChannelName, ErrorMessage, Sha1Hash } from "../common/types/kacheryTypes";
+import { ChannelName, ErrorMessage, TaskHash, TaskStatus } from "../common/types/kacheryTypes";
 import { randomAlphaString } from "../common/util";
-import { TaskStatus } from "../services/daemonApiTypes";
 
 type ListenerCallback = (status: TaskStatus, errMsg: ErrorMessage | undefined) => void
 
 interface TaskCode extends String {
     __taskCode__: never // phantom type
 }
-const createTaskCode = (channelName: ChannelName, taskHash: Sha1Hash) => {
+const createTaskCode = (channelName: ChannelName, taskHash: TaskHash) => {
     return `${channelName}:${taskHash}` as any as TaskCode
 }
 
+type OutgoingTask = {
+    channelName: ChannelName
+    taskHash: TaskHash
+    status: TaskStatus
+    errorMessage?: ErrorMessage
+    listenForStatusUpdates: (callback: () => void) => {cancelListener: () => void}
+    _callbacks: {[key: string]: () => void}
+}
+
 export default class OutgoingTaskManager {
-    #taskStatusUpdateListenersByTaskHash = new GarbageMap<TaskCode, {[key: string]: ListenerCallback}>(null)
+    #outgoingTasksByCode = new GarbageMap<TaskCode, OutgoingTask>(null)
     constructor() {
     }
-    updateTaskStatus(channelName: ChannelName, taskHash: Sha1Hash, status: TaskStatus, errMsg: ErrorMessage | undefined) {
+    createOutgoingTask(channelName: ChannelName, taskHash: TaskHash) {
         const code = createTaskCode(channelName, taskHash)
-        const a = this.#taskStatusUpdateListenersByTaskHash.get(code)
-        if (!a) return
-        for (let k in a) {
-            a[k](status, errMsg)
+        if (!this.#outgoingTasksByCode.has(code)) {
+            const _callbacks: {[key: string]: () => void} = {}
+            const t: OutgoingTask = {
+                channelName,
+                taskHash,
+                status: 'waiting',
+                listenForStatusUpdates: (callback: () => void) => {
+                    const key = randomAlphaString(10)
+                    _callbacks[key] = callback
+                    return {cancelListener: () => {
+                        if (_callbacks[key]) delete _callbacks[key]
+                    }}
+                },
+                _callbacks
+            }
+            this.#outgoingTasksByCode.set(code, t)
         }
+        const t = this.outgoingTask(channelName, taskHash)
+        if (!t) throw Error('Unexpected')
+        return t
     }
-    listenForTaskStatusUpdates(channelName: ChannelName, taskHash: Sha1Hash, callback: ListenerCallback) {
+    outgoingTask(channelName: ChannelName, taskHash: TaskHash) {
         const code = createTaskCode(channelName, taskHash)
-        const key = randomAlphaString(10)
-        if (!this.#taskStatusUpdateListenersByTaskHash.has(code)) {
-            this.#taskStatusUpdateListenersByTaskHash.set(code, {})
+        return this.#outgoingTasksByCode.get(code)
+    }
+    updateTaskStatus(channelName: ChannelName, taskHash: TaskHash, status: TaskStatus, errMsg: ErrorMessage | undefined) {
+        const code = createTaskCode(channelName, taskHash)
+        const a = this.#outgoingTasksByCode.get(code)
+        if (!a) return
+        if (a.status !== status) {
+            a.status = status
+            a.errorMessage = errMsg
+            for (let k in a._callbacks) {
+                a._callbacks[k]()
+            }
         }
-        const a = this.#taskStatusUpdateListenersByTaskHash.get(code)
-        if (!a) throw Error('Unexpected')
-        a[key] = callback
-        const cancelListener = () => {
-            if (a[key]) delete a[key]
-        }
-        return {cancelListener}
     }
 }

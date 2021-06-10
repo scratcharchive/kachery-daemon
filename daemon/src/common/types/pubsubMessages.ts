@@ -1,5 +1,4 @@
-import { isTaskStatus, TaskStatus } from "../../services/daemonApiTypes";
-import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSha1Hash, isSignature, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskKwargs, MessageCount, NodeId, optional, Sha1Hash, Signature, subfeedHash, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskKwargs, _validateObject } from "./kacheryTypes";
+import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskHash, isTaskKwargs, isTaskStatus, MessageCount, NodeId, optional, Signature, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskHash, TaskKwargs, TaskStatus, _validateObject } from "./kacheryTypes";
 
 export type RequestFileMessageBody = {
     type: 'requestFile',
@@ -61,7 +60,7 @@ export const isRequestSubfeedMessageBody = (x: any): x is RequestSubfeedMessageB
 
 export type UpdateTaskStatusMessageBody = {
     type: 'updateTaskStatus',
-    taskHash: Sha1Hash,
+    taskHash: TaskHash,
     status: TaskStatus,
     errorMessage?: ErrorMessage
 }
@@ -69,7 +68,7 @@ export type UpdateTaskStatusMessageBody = {
 export const isUpdateTaskStatusMessageBody = (x: any): x is UpdateTaskStatusMessageBody => {
     return _validateObject(x, {
         type: isEqualTo('updateTaskStatus'),
-        taskHash: isSha1Hash,
+        taskHash: isTaskHash,
         status: isTaskStatus,
         errorMessage: optional(isErrorMessage)
     })
@@ -77,7 +76,7 @@ export const isUpdateTaskStatusMessageBody = (x: any): x is UpdateTaskStatusMess
 
 export type RequestTaskResultMessageBody = {
     type: 'requestTaskResult',
-    taskHash: Sha1Hash,
+    taskHash: TaskHash,
     taskFunctionId: TaskFunctionId,
     taskKwargs: TaskKwargs
 }
@@ -85,7 +84,7 @@ export type RequestTaskResultMessageBody = {
 export const isRequestTaskResultMessageBody = (x: any): x is RequestTaskResultMessageBody => {
     return _validateObject(x, {
         type: isEqualTo('requestTaskResult'),
-        taskHash: isSha1Hash,
+        taskHash: isTaskHash,
         taskFunctionId: isTaskFunctionId,
         taskKwargs: isTaskKwargs
     })

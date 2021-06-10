@@ -1,8 +1,7 @@
 import GarbageMap from "../common/GarbageMap";
-import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, scaledDurationMsec, Sha1Hash, TaskFunctionId, TaskKwargs, Timestamp } from "../common/types/kacheryTypes";
+import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, TaskFunctionId, TaskHash, TaskKwargs, Timestamp } from "../common/types/kacheryTypes";
 import { randomAlphaString } from "../common/util";
-import KacheryHubInterface from "../kacheryHub/KacheryHubInterface";
-import { RegisteredTaskFunction, RequestedTask, TaskStatus } from "../services/daemonApiTypes";
+import { RegisteredTaskFunction, RequestedTask } from "../services/daemonApiTypes";
 
 type RegisteredTaskFunctionGroup = {
     taskFunctions: RegisteredTaskFunction[]
@@ -49,7 +48,7 @@ export default class IncomingTaskManager {
             }, durationMsecToNumber(timeoutMsec))
         })
     }
-    requestTaskResult(channelName: ChannelName, taskHash: Sha1Hash, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs) {
+    requestTaskResult(channelName: ChannelName, taskHash: TaskHash, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs) {
         this.#pendingTaskRequests.push({
             requestedTask: {
                 channelName,

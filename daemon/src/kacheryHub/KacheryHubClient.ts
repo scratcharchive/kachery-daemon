@@ -3,7 +3,7 @@ import axios from "axios"
 import { getSignature, nodeIdToPublicKey, publicKeyHexToNodeId, publicKeyToHex, verifySignature } from "../common/types/crypto_util"
 import { isNodeConfig, isPubsubAuth, PubsubAuth } from "../common/types/kacheryHubTypes"
 import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, isCreateSignedTaskResultUploadUrlResponse, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isGetNodeConfigResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
-import { ByteCount, ChannelName, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, UserId } from "../common/types/kacheryTypes"
+import { ByteCount, ChannelName, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, TaskHash, UserId } from "../common/types/kacheryTypes"
 import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../common/types/pubsubMessages'
 import { randomAlphaString } from "../common/util"
 import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
@@ -99,7 +99,7 @@ class KacheryHubClient {
         }
         return x.signedUrls
     }
-    async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskHash: Sha1Hash, size: ByteCount}) {
+    async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskHash: TaskHash, size: ByteCount}) {
         if (!this.opts.ownerId) throw Error('No owner ID in createSignedTaskResultUploadUrl')
         const {channelName, taskHash, size} = a
         const reqBody: CreateSignedTaskResultUploadUrlRequestBody = {

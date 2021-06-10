@@ -11,7 +11,7 @@ import { HttpServerInterface } from '../external/ExternalInterface';
 import { isGetStatsOpts, NodeStatsInterface } from '../getStats';
 import KacheryDaemonNode from '../KacheryDaemonNode';
 import { loadFile } from '../loadFile';
-import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskLoadTaskResultRequest, isTaskRegisterTaskFunctionsRequest, isTaskUpdateTaskStatusRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, RequestedTask, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskLoadTaskResultResponse, TaskRegisterTaskFunctionsResponse, TaskUpdateTaskStatusResponse } from './daemonApiTypes';
+import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskRegisterTaskFunctionsRequest, isTaskRequestTaskResultRequest, isTaskUpdateTaskStatusRequest, isTaskWaitForTaskResultRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, RequestedTask, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskRegisterTaskFunctionsResponse, TaskRequestTaskResultResponse, TaskUpdateTaskStatusResponse, TaskWaitForTaskResultResponse } from './daemonApiTypes';
 
 export default class DaemonApiServer {
     #node: KacheryDaemonNode
@@ -154,9 +154,15 @@ export default class DaemonApiServer {
             browserAccess: true
         },
         {
-            // /task/loadTaskResult
-            path: '/task/loadTaskResult',
-            handler: async (reqData: JSONObject) => {return await this._handleTaskLoadTaskResult(reqData)},
+            // /task/requestTaskResult
+            path: '/task/requestTaskResult',
+            handler: async (reqData: JSONObject) => {return await this._handleTaskRequestTaskResult(reqData)},
+            browserAccess: true
+        },
+        {
+            // /task/waitForTaskResult
+            path: '/task/waitForTaskResult',
+            handler: async (reqData: JSONObject) => {return await this._handleTaskWaitForTaskResult(reqData)},
             browserAccess: true
         }
     ]
@@ -697,18 +703,35 @@ export default class DaemonApiServer {
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
         return response
     }
-    // /task/loadTaskResult
-    async _handleTaskLoadTaskResult(reqData: JSONObject) {
+    // /task/requestTaskResult
+    async _handleTaskRequestTaskResult(reqData: JSONObject) {
         /* istanbul ignore next */
-        if (!isTaskLoadTaskResultRequest(reqData)) throw Error('Invalid request in _handleTaskLoadTaskResult')
+        if (!isTaskRequestTaskResultRequest(reqData)) throw Error('Invalid request in _handleTaskRequestTaskResult')
         const { channelName, taskFunctionId, taskKwargs, timeoutMsec } = reqData
 
-        const result = await this.#node.kacheryHubInterface().loadTaskResultFromChannel({channelName, taskFunctionId, taskKwargs, timeoutMsec})
+        const result = await this.#node.kacheryHubInterface().requestTaskResultFromChannel({channelName, taskFunctionId, taskKwargs, timeoutMsec})
 
-        const response: TaskLoadTaskResultResponse = {
+        const response: TaskRequestTaskResultResponse = {
+            success: true,
+            taskHash: result.taskHash,
+            status: result.status,
+            taskResultUrl: result.taskResultUrl,
+            errorMessage: result.errorMessage
+        }
+        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+        return response
+    }
+    // /task/waitForTaskResult
+    async _handleTaskWaitForTaskResult(reqData: JSONObject) {
+        /* istanbul ignore next */
+        if (!isTaskWaitForTaskResultRequest(reqData)) throw Error('Invalid request in _handleTaskWaitForTaskResult')
+        const { channelName, taskHash, timeoutMsec } = reqData
+
+        const result = await this.#node.kacheryHubInterface().waitForTaskResult({channelName, taskHash, timeoutMsec})
+
+        const response: TaskWaitForTaskResultResponse = {
             success: true,
             status: result.status,
-            taskHash: result.taskHash,
             taskResultUrl: result.taskResultUrl,
             errorMessage: result.errorMessage
         }
