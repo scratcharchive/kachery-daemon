@@ -485,7 +485,7 @@ export const isChannelName = (x: any): x is ChannelName => {
     let result = true
     x.split(".").forEach((element) => {
         if (element.length === 0) result = false
-        if (!/^[a-zA-Z0-9@]([a-zA-Z0-9@-]*[a-zA-Z0-9@])?$/.test(element)) result = false
+        if (!/^[a-zA-Z0-9@-_]([a-zA-Z0-9@-_]*[a-zA-Z0-9@-_])?$/.test(element)) result = false
     })
     return result
 }
@@ -500,11 +500,11 @@ export interface TaskFunctionId extends String {
 }
 export const isTaskFunctionId = (x: any): x is TaskFunctionId => {
     if (!isString(x)) return false;
-    if (x.length > 40) return false
+    if (x.length > 400) return false
     let result = true
     x.split(".").forEach((element) => {
         if (element.length === 0) result = false
-        if (!/^[a-zA-Z0-9@]([a-zA-Z0-9@-]*[a-zA-Z0-9@])?$/.test(element)) result = false
+        if (!/^[a-zA-Z0-9@_-]([a-zA-Z0-9@_-]*[a-zA-Z0-9@_-])?$/.test(element)) result = false
     })
     return result
 }
