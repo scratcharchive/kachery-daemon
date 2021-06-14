@@ -1,4 +1,4 @@
-import { byteCount, ByteCount, byteCountToNumber } from "../common/types/kacheryTypes"
+import { byteCount, ByteCount, byteCountToNumber } from "../kachery-js/types/kacheryTypes"
 
 export interface DataStreamyProgress {
     bytesLoaded: ByteCount

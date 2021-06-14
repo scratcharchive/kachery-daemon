@@ -1,6 +1,7 @@
 import GarbageMap from "../common/GarbageMap";
-import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, TaskFunctionId, TaskHash, TaskKwargs, Timestamp } from "../common/types/kacheryTypes";
 import { randomAlphaString } from "../common/util";
+import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, TaskFunctionId, TaskId, TaskKwargs, Timestamp } from "../kachery-js/types/kacheryTypes";
+import { TaskFunctionType } from "../kachery-js/types/pubsubMessages";
 import { RegisteredTaskFunction, RequestedTask } from "../services/daemonApiTypes";
 
 type RegisteredTaskFunctionGroup = {
@@ -48,13 +49,15 @@ export default class IncomingTaskManager {
             }, durationMsecToNumber(timeoutMsec))
         })
     }
-    requestTaskResult(channelName: ChannelName, taskHash: TaskHash, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs) {
+    requestTask(args: {channelName: ChannelName, taskId: TaskId, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, taskFunctionType: TaskFunctionType}) {
+        const {channelName, taskId, taskFunctionId, taskKwargs, taskFunctionType} = args
         this.#pendingTaskRequests.push({
             requestedTask: {
                 channelName,
-                taskHash,
+                taskId,
                 taskFunctionId,
-                kwargs: taskKwargs
+                kwargs: taskKwargs,
+                taskFunctionType
             },
             timestamp: nowTimestamp()
         })

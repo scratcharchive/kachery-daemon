@@ -1,6 +1,6 @@
 import GarbageMap from "../common/GarbageMap"
-import { JSONStringifyDeterministic } from "../common/types/crypto_util"
-import { JSONValue, LocalFilePath, localFilePath, scaledDurationMsec, Sha1Hash, sha1OfString } from "../common/types/kacheryTypes"
+import { JSONStringifyDeterministic } from "../kachery-js/types/crypto_util"
+import { JSONValue, LocalFilePath, localFilePath, scaledDurationMsec, Sha1Hash, sha1OfString } from "../kachery-js/types/kacheryTypes"
 import MutableDatabase from "./MutableDatabase"
 
 export type MutableRecord = {

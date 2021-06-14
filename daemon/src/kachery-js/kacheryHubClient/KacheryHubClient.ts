@@ -1,11 +1,9 @@
 import Ably from 'ably'
-import axios from "axios"
-import { getSignature, nodeIdToPublicKey, publicKeyHexToNodeId, publicKeyToHex, verifySignature } from "../common/types/crypto_util"
-import { isNodeConfig, isPubsubAuth, PubsubAuth } from "../common/types/kacheryHubTypes"
-import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, isCreateSignedTaskResultUploadUrlResponse, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isGetNodeConfigResponse, KacheryNodeRequest, KacheryNodeRequestBody, ReportRequestBody } from "../common/types/kacheryNodeRequestTypes"
-import { ByteCount, ChannelName, FeedId, JSONValue, KeyPair, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, TaskHash, UserId } from "../common/types/kacheryTypes"
-import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../common/types/pubsubMessages'
-import { randomAlphaString } from "../common/util"
+import { nodeIdToPublicKey, verifySignature } from "../types/crypto_util"
+import { isPubsubAuth, PubsubAuth } from "../types/kacheryHubTypes"
+import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, GetChannelConfigRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isCreateSignedTaskResultUploadUrlResponse, isGetChannelConfigResponse, isGetNodeConfigResponse, KacheryNodeRequestBody, ReportRequestBody } from "../types/kacheryNodeRequestTypes"
+import { ByteCount, ChannelName, FeedId, JSONValue, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, TaskId, UserId } from "../types/kacheryTypes"
+import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../types/pubsubMessages'
 import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
 import createPubsubClient, { PubsubClient, PubsubMessage } from "./createPubsubClient"
 
@@ -19,7 +17,7 @@ export type IncomingKacheryHubPubsubMessage = {
 class KacheryHubClient {
     #pubsubClients: {[key: string]: PubsubClient} = {}
     #incomingPubsubMessageCallbacks: {[key: string]: (x: IncomingKacheryHubPubsubMessage) => void} = {}
-    constructor(private opts: {keyPair: KeyPair, ownerId?: UserId, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
+    constructor(private opts: {nodeId: NodeId, sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>, ownerId?: UserId, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
     }
     async fetchNodeConfig() {
         if (!this.opts.ownerId) throw Error('No owner ID in fetchNodeConfig')
@@ -39,12 +37,26 @@ class KacheryHubClient {
         if (!nodeConfig) throw Error('Unexpected, no nodeConfig')
         return nodeConfig
     }
+    async fetchChannelConfig(channelName: ChannelName) {
+        const reqBody: GetChannelConfigRequestBody = {
+            type: 'getChannelConfig',
+            channelName
+        }
+        const resp = await this._sendRequest(reqBody)
+        if (!isGetChannelConfigResponse(resp)) {
+            throw Error('Invalid response in getChannelConfig')
+        }
+        if (!resp.found) {
+            throw Error('Channel not found for getChannelConfig')
+        }
+        const channelConfig = resp.channelConfig
+        if (!channelConfig) throw Error('Unexpected, no channelConfig')
+        return channelConfig
+    }
     async fetchPubsubAuthForChannel(channelName: ChannelName) {
-        if (!this.opts.ownerId) throw Error('No owner ID in fetchPubsubAuthForChannel')
         const reqBody: GetPubsubAuthForChannelRequestBody = {
             type: 'getPubsubAuthForChannel',
             nodeId: this.nodeId,
-            ownerId: this.opts.ownerId,
             channelName
         }
         const pubsubAuth = await this._sendRequest(reqBody)
@@ -99,15 +111,15 @@ class KacheryHubClient {
         }
         return x.signedUrls
     }
-    async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskHash: TaskHash, size: ByteCount}) {
+    async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskId: TaskId, size: ByteCount}) {
         if (!this.opts.ownerId) throw Error('No owner ID in createSignedTaskResultUploadUrl')
-        const {channelName, taskHash, size} = a
+        const {channelName, taskId, size} = a
         const reqBody: CreateSignedTaskResultUploadUrlRequestBody = {
             type: 'createSignedTaskResultUploadUrl',
             nodeId: this.nodeId,
             ownerId: this.opts.ownerId,
             channelName,
-            taskHash,
+            taskId,
             size
         }
         const x = await this._sendRequest(reqBody)
@@ -117,7 +129,7 @@ class KacheryHubClient {
         return x.signedUrl
     }
     public get nodeId() {
-        return publicKeyHexToNodeId(publicKeyToHex(this.opts.keyPair.publicKey))
+        return this.opts.nodeId
     }
     clearPubsubClientsForChannels() {
         for (let k in this.#pubsubClients) {
@@ -183,17 +195,23 @@ class KacheryHubClient {
         }}
     }
     async _sendRequest(requestBody: KacheryNodeRequestBody): Promise<JSONValue> {
-        const request: KacheryNodeRequest = {
-            body: requestBody,
-            nodeId: this.nodeId,
-            signature: getSignature(requestBody, this.opts.keyPair)
-        }
-        const x = await axios.post(`${this._kacheryHubUrl()}/api/kacheryNode`, request)
-        return x.data
+        return await this.opts.sendKacheryNodeRequest(requestBody)
     }
     _kacheryHubUrl() {
         return this.opts.kacheryHubUrl
     }
+}
+
+export const randomAlphaString = (num_chars: number) => {
+    if (!num_chars) {
+        /* istanbul ignore next */
+        throw Error('randomAlphaString: num_chars needs to be a positive integer.')
+    }
+    var text = "";
+    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    for (var i = 0; i < num_chars; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    return text;
 }
 
 export default KacheryHubClient

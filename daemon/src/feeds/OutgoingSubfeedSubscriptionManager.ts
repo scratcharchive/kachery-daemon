@@ -1,5 +1,5 @@
 import GarbageMap from "../common/GarbageMap"
-import { DurationMsec, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, SubfeedPosition, zeroTimestamp } from "../common/types/kacheryTypes"
+import { DurationMsec, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, SubfeedPosition, zeroTimestamp } from "../kachery-js/types/kacheryTypes"
 
 class OutgoingSubfeedSubscriptionManager {
     #outgoingSubscriptions = new GarbageMap<string, OutgoingSubfeedSubscription>(scaledDurationMsec(300 * 60 * 1000))

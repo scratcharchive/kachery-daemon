@@ -1,5 +1,5 @@
 import Ably from 'ably'
-import { PubsubChannelName } from '../common/types/kacheryTypes'
+import { PubsubChannelName } from '../types/kacheryTypes'
 import { PubsubChannel, PubsubMessage } from './createPubsubClient'
 
 class AblyPubsubChannel {

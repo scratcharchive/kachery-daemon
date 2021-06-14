@@ -1,6 +1,6 @@
-import { verifySignatureJson } from '../common/types/crypto_util';
+import { verifySignatureJson } from '../kachery-js/types/crypto_util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { FeedId, JSONObject, messageCount, PublicKey, Signature, SignedSubfeedMessage, SubfeedHash } from '../common/types/kacheryTypes';
+import { FeedId, JSONObject, messageCount, PublicKey, Signature, SignedSubfeedMessage, SubfeedHash } from '../kachery-js/types/kacheryTypes';
 
 class LocalSubfeedSignedMessagesManager {
     #signedMessages: SignedSubfeedMessage[] | null = null // in-memory cache

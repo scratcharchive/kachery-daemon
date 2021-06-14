@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fs, { createReadStream } from 'fs';
 import DataStreamy from '../../../common/DataStreamy';
 import { randomAlphaString, sleepMsec } from '../../../common/util';
-import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, localFilePath, LocalFilePath, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from '../../../common/types/kacheryTypes';
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, localFilePath, LocalFilePath, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from '../../../kachery-js/types/kacheryTypes';
 import axios from 'axios';
 import { Socket } from 'net';
 import { ClientRequest } from 'http';
@@ -129,6 +129,7 @@ export class KacheryStorageManager {
                             manifestSha1 = computeSha1OfBufferSync(manifestJson)
                             this.storeFile(manifestSha1, manifestJson)
                         }
+                        _cleanup()
                         resolve({sha1: sha1Computed, manifestSha1})
                     }
                     if ((!o.calculateHashOnly) && (tmpDestPath)) {
@@ -139,7 +140,10 @@ export class KacheryStorageManager {
                         else {
                             // dest path does not already exist
                             fs.mkdirSync(destParentPath, {recursive: true});
-                            renameAndCheck(tmpDestPath, destPath, byteCountToNumber(fileSize)).then(nextStep)
+                            renameAndCheck(tmpDestPath, destPath, byteCountToNumber(fileSize)).then(nextStep).catch(err3 => {
+                                _cleanup()
+                                reject(err3)
+                            })
                         }
                     }
                     else {

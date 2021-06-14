@@ -1,7 +1,7 @@
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
-import { Port, portToNumber } from "../../common/types/kacheryTypes";
+import { Port, portToNumber } from "../../kachery-js/types/kacheryTypes";
 import { ExpressInterface, HttpServerInterface } from '../ExternalInterface';
 
 const startHttpServer = async (app: ExpressInterface, listenPort: Port): Promise<HttpServerInterface> => {

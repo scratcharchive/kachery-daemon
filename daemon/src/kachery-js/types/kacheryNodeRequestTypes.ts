@@ -1,5 +1,5 @@
-import { isNodeConfig, NodeConfig } from "./kacheryHubTypes"
-import { ByteCount, ChannelName, FeedId, isArrayOf, isBoolean, isByteCount, isChannelName, isEqualTo, isFeedId, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isString, isSubfeedHash, isTaskHash, isUrlString, isUserId, NodeId, NodeLabel, optional, Sha1Hash, Signature, SubfeedHash, TaskHash, UrlString, UserId, _validateObject } from "./kacheryTypes"
+import { AblyTokenRequest, ChannelConfig, isAblyTokenRequest, isChannelConfig, isNodeConfig, NodeConfig } from "./kacheryHubTypes"
+import { ByteCount, ChannelName, FeedId, isArrayOf, isBoolean, isByteCount, isChannelName, isEqualTo, isFeedId, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isSubfeedHash, isTaskId, isUrlString, isUserId, NodeId, NodeLabel, optional, Sha1Hash, Signature, SubfeedHash, TaskId, UrlString, UserId, _validateObject } from "./kacheryTypes"
 
 export type ReportRequestBody = {
     type: 'report'
@@ -43,10 +43,34 @@ export const isGetNodeConfigResponse = (x: any): x is GetNodeConfigResponse => {
     })
 }
 
+export type GetChannelConfigRequestBody = {
+    type: 'getChannelConfig'
+    channelName: ChannelName
+}
+
+export const isGetChannelConfigRequestBody = (x: any): x is GetNodeConfigRequestBody => {
+    return _validateObject(x, {
+        type: isEqualTo('getChannelConfig'),
+        channelName: isChannelName
+    })
+}
+
+export type GetChannelConfigResponse = {
+    found: boolean,
+    channelConfig?: ChannelConfig
+}
+
+export const isGetChannelConfigResponse = (x: any): x is GetChannelConfigResponse => {
+    return _validateObject(x, {
+        found: isBoolean,
+        channelConfig: optional(isChannelConfig)
+    })
+}
+
 export type GetPubsubAuthForChannelRequestBody = {
     type: 'getPubsubAuthForChannel'
     nodeId: NodeId
-    ownerId: UserId,
+    ownerId?: UserId, // not needed
     channelName: ChannelName
 }
 
@@ -54,10 +78,21 @@ export const isGetPubsubAuthForChannelRequestBody = (x: any): x is GetPubsubAuth
     return _validateObject(x, {
         type: isEqualTo('getPubsubAuthForChannel'),
         nodeId: isNodeId,
-        ownerId: isUserId,
+        ownerId: optional(isUserId), // not needed
         channelName: isChannelName
     })
 }
+
+export type GetPubsubAuthForChannelResponse = {
+    ablyTokenRequest: AblyTokenRequest
+}
+
+export const isGetPubsubAuthForChannelResponse = (x: any): x is GetPubsubAuthForChannelResponse => {
+    return _validateObject(x, {
+        ablyTokenRequest: isAblyTokenRequest
+    })
+}
+
 
 export type CreateSignedFileUploadUrlRequestBody = {
     type: 'createSignedFileUploadUrl'
@@ -126,7 +161,7 @@ export type CreateSignedTaskResultUploadUrlRequestBody = {
     nodeId: NodeId
     ownerId: UserId
     channelName: ChannelName
-    taskHash: TaskHash
+    taskId: TaskId
     size: ByteCount
 }
 
@@ -136,7 +171,7 @@ export const isCreateSignedTaskResultUploadUrlRequestBody = (x: any): x is Creat
         nodeId: isNodeId,
         ownerId: isUserId,
         channelName: isChannelName,
-        taskHash: isTaskHash,
+        taskId: isTaskId,
         size: isByteCount
     })
 }
@@ -152,11 +187,11 @@ export const isCreateSignedTaskResultUploadUrlResponse = (x: any): x is CreateSi
 }
 
 export type KacheryNodeRequestBody =
-    ReportRequestBody | GetNodeConfigRequestBody | GetPubsubAuthForChannelRequestBody | CreateSignedFileUploadUrlRequestBody | CreateSignedSubfeedMessageUploadUrlRequestBody | CreateSignedTaskResultUploadUrlRequestBody
+    ReportRequestBody | GetNodeConfigRequestBody | GetPubsubAuthForChannelRequestBody | CreateSignedFileUploadUrlRequestBody | CreateSignedSubfeedMessageUploadUrlRequestBody | CreateSignedTaskResultUploadUrlRequestBody | GetChannelConfigRequestBody
 
 export const isKacheryNodeRequestBody = (x: any): x is KacheryNodeRequestBody => {
     return isOneOf([
-        isReportRequestBody, isGetNodeConfigRequestBody, isGetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlRequestBody, isCreateSignedSubfeedMessageUploadUrlRequestBody, isCreateSignedTaskResultUploadUrlRequestBody
+        isReportRequestBody, isGetNodeConfigRequestBody, isGetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlRequestBody, isCreateSignedSubfeedMessageUploadUrlRequestBody, isCreateSignedTaskResultUploadUrlRequestBody, isGetChannelConfigRequestBody
     ])(x)
 }
 

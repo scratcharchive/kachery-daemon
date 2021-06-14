@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
-import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isString, isUrlString, isUserId, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, UserId, _validateObject } from './common/types/kacheryTypes';
+import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isString, isUrlString, isUserId, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, UserId, _validateObject } from './kachery-js/types/kacheryTypes';
 import startDaemon from './startDaemon';
 
 // Thanks: https://stackoverflow.com/questions/4213351/make-node-js-not-exit-on-error

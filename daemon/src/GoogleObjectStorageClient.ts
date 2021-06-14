@@ -1,6 +1,6 @@
 import axios from "axios"
-import { ChannelName, JSONValue } from "../common/types/kacheryTypes"
-import NodeStats from "../NodeStats"
+import { ChannelName, JSONValue } from "./kachery-js/types/kacheryTypes"
+import NodeStats from "./NodeStats"
 
 export type GoogleObjectStorageClientOpts = {
     bucketName: string

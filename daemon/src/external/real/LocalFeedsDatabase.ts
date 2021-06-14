@@ -1,8 +1,8 @@
 import { Database, open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import { JSONStringifyDeterministic } from '../../common/types/crypto_util';
+import { JSONStringifyDeterministic } from '../../kachery-js/types/crypto_util';
 import { sleepMsec } from '../../common/util';
-import { FeedId, isJSONObject, isSignedSubfeedMessage, isString, LocalFilePath, SignedSubfeedMessage, SubfeedHash, unscaledDurationMsec } from "../../common/types/kacheryTypes";
+import { FeedId, isJSONObject, isSignedSubfeedMessage, isString, LocalFilePath, SignedSubfeedMessage, SubfeedHash, unscaledDurationMsec } from "../../kachery-js/types/kacheryTypes";
 import fs from 'fs'
 
 class LocalFeedsDatabase {

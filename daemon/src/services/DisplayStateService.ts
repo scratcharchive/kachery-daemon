@@ -1,5 +1,5 @@
-import { NodeChannelMembership } from "../common/types/kacheryHubTypes";
-import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "../common/types/kacheryTypes";
+import { NodeChannelMembership } from "../kachery-js/types/kacheryHubTypes";
+import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "../kachery-js/types/kacheryTypes";
 import { formatByteCount, sleepMsec } from "../common/util";
 import KacheryDaemonNode from "../KacheryDaemonNode";
 
@@ -59,10 +59,10 @@ const makeRoleString = (cm: NodeChannelMembership) => {
     if (cm.authorization) {
         if ((cm.roles.requestFiles) && (cm.authorization.permissions.requestFiles))  ret.push('rfi')
         if ((cm.roles.requestFeeds) && (cm.authorization.permissions.requestFeeds)) ret.push('rfe')
-        if ((cm.roles.requestTaskResults) && (cm.authorization.permissions.requestTaskResults)) ret.push('rtr')
+        if ((cm.roles.requestTasks) && (cm.authorization.permissions.requestTasks)) ret.push('rtr')
         if ((cm.roles.provideFiles) && (cm.authorization.permissions.provideFiles)) ret.push('pfi')
         if ((cm.roles.provideFeeds) && (cm.authorization.permissions.provideFeeds)) ret.push('pfe')
-        if ((cm.roles.provideTaskResults) && (cm.authorization.permissions.provideTaskResults)) ret.push('ptr')
+        if ((cm.roles.provideTasks) && (cm.authorization.permissions.provideTasks)) ret.push('ptr')
     }
     return ret.join(' ')
 }

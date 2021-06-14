@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Binary as bsonBinary, deserialize as bsonDeserialize, serialize as bsonSerialize } from 'bson';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { Address, ByteCount, byteCountToNumber, DurationMsec, durationMsecToNumber, elapsedSince, FileKey, isAddress, nowTimestamp, scaledDurationMsec, Sha1Hash, unscaledDurationMsec } from '../common/types/kacheryTypes';
+import { Address, ByteCount, byteCountToNumber, DurationMsec, durationMsecToNumber, elapsedSince, FileKey, isAddress, nowTimestamp, scaledDurationMsec, Sha1Hash, unscaledDurationMsec } from '../kachery-js/types/kacheryTypes';
 
 
 export const randomAlphaString = (num_chars: number) => {
@@ -192,12 +192,4 @@ export const formatByteCount = (n: ByteCount) => {
     else {
         return `${(a / (1000 * 1000)).toFixed(0)} MiB`
     }
-}
-
-export const urlFromUri = (uri: string) => {
-    if (uri.startsWith('gs://')) {
-        const p = uri.slice("gs://".length)
-        return `https://storage.googleapis.com/${p}`
-    }
-    else return uri
 }

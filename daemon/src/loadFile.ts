@@ -1,6 +1,6 @@
 import DataStreamy, { DataStreamyProgress } from './common/DataStreamy'
 import { formatByteCount, sha1MatchesFileKey } from './common/util'
-import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, fileKeyHash, FileManifestChunk, isFileManifest, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from './common/types/kacheryTypes'
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, fileKeyHash, FileManifestChunk, isFileManifest, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from './kachery-js/types/kacheryTypes'
 import KacheryDaemonNode from './KacheryDaemonNode'
 import axios from 'axios'
 import { httpUrlDownload } from './external/real/httpRequests'

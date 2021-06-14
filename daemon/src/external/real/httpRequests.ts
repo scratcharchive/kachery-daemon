@@ -2,7 +2,7 @@ import axios from 'axios';
 import { ClientRequest } from 'http';
 import { Socket } from 'net';
 import DataStreamy from '../../common/DataStreamy';
-import { Address, byteCount, ByteCount, ChannelName, DurationMsec, durationMsecToNumber, JSONObject, NodeId, UrlPath, urlString, UrlString } from '../../common/types/kacheryTypes';
+import { Address, byteCount, ByteCount, ChannelName, DurationMsec, durationMsecToNumber, JSONObject, NodeId, UrlPath, urlString, UrlString } from '../../kachery-js/types/kacheryTypes';
 import NodeStats from '../../NodeStats';
 
 export const _tests: {[key: string]: () => Promise<void>} = {}

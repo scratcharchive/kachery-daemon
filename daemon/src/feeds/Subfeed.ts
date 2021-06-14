@@ -1,14 +1,14 @@
 import { Mutex } from 'async-mutex';
 import { assert } from 'console';
 import { nextTick } from 'process';
-import { feedIdToPublicKeyHex, getSignatureJson, hexToPublicKey, verifySignatureJson } from '../common/types/crypto_util';
+import { feedIdToPublicKeyHex, getSignatureJson, hexToPublicKey, verifySignatureJson } from '../kachery-js/types/crypto_util';
 import { randomAlphaString } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { ChannelName, DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../common/types/kacheryTypes';
+import { ChannelName, DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../kachery-js/types/kacheryTypes';
 import LocalSubfeedSignedMessagesManager from './LocalSubfeedSignedMessagesManager';
 import KacheryDaemonNode from '../KacheryDaemonNode';
 import RemoteSubfeedMessageDownloader from './RemoteSubfeedMessageDownloader';
-import KacheryHubInterface from '../kacheryHub/KacheryHubInterface';
+import KacheryHubInterface from '../KacheryHubInterface';
 // import NewOutgoingSubfeedSubscriptionManager from './NewOutgoingSubfeedSubscriptionManager';
 
 class Subfeed {

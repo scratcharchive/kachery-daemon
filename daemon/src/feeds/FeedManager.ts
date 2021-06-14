@@ -1,11 +1,11 @@
 import axios from 'axios';
 import { timeStamp } from 'console';
 import GarbageMap from '../common/GarbageMap';
-import { byteCount, ChannelName, DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../common/types/kacheryTypes';
+import { byteCount, ChannelName, DurationMsec, durationMsecToNumber, FeedId, FeedName, feedSubfeedId, FeedSubfeedId, FindLiveFeedResult, messageCount, MessageCount, messageCountToNumber, NodeId, nowTimestamp, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedPosition, subfeedPosition, subfeedPositionToNumber, SubfeedWatch, SubfeedWatchesRAM, SubfeedWatchName } from '../kachery-js/types/kacheryTypes';
 import { sleepMsec } from '../common/util';
 import { LocalFeedManagerInterface } from '../external/ExternalInterface';
 import KacheryDaemonNode from '../KacheryDaemonNode';
-import KacheryHubInterface from '../kacheryHub/KacheryHubInterface';
+import KacheryHubInterface from '../KacheryHubInterface';
 import NodeStats from '../NodeStats';
 import IncomingSubfeedSubscriptionManager from './IncomingSubfeedSubscriptionManager';
 import OutgoingSubfeedSubscriptionManager from './OutgoingSubfeedSubscriptionManager';

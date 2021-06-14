@@ -1,6 +1,6 @@
 import { randomAlphaString, sleepMsec } from "../common/util";
 // import { scaledDurationMsec, _validateObject } from "../common/types/kacheryTypes";
-import { scaledDurationMsec, _validateObject } from "../common/types/kacheryTypes"
+import { scaledDurationMsec, _validateObject } from "../kachery-js/types/kacheryTypes"
 import KacheryDaemonNode from "../KacheryDaemonNode";
 import child_process from 'child_process'
 import fs from 'fs'

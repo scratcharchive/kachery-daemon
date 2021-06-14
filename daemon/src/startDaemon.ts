@@ -1,5 +1,5 @@
 import ExternalInterface from './external/ExternalInterface';
-import { NodeLabel, Port, UserId } from './common/types/kacheryTypes';
+import { NodeLabel, Port, UserId } from './kachery-js/types/kacheryTypes';
 import KacheryDaemonNode from './KacheryDaemonNode';
 import ClientAuthService from './services/ClientAuthService';
 import DaemonApiServer from './services/DaemonApiServer';

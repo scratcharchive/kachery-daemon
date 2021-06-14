@@ -1,6 +1,6 @@
 import fs from 'fs'
 import DataStreamy from "../common/DataStreamy"
-import { Address, ByteCount, ChannelName, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "../common/types/kacheryTypes"
+import { Address, ByteCount, ChannelName, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "../kachery-js/types/kacheryTypes"
 import MutableManager from "../mutables/MutableManager"
 import NodeStats from "../NodeStats"
 

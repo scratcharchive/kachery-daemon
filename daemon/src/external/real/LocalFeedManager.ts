@@ -1,7 +1,7 @@
 import fs from 'fs';
 import GarbageMap from '../../common/GarbageMap';
-import { createKeyPair, hexToPrivateKey, JSONStringifyDeterministic, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../common/types/crypto_util';
-import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, _validateObject } from '../../common/types/kacheryTypes';
+import { createKeyPair, hexToPrivateKey, JSONStringifyDeterministic, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../kachery-js/types/crypto_util';
+import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, _validateObject } from '../../kachery-js/types/kacheryTypes';
 import { isReadableByOthers } from '../../common/util';
 import MutableManager from '../../mutables/MutableManager';
 import LocalFeedsDatabase from './LocalFeedsDatabase';

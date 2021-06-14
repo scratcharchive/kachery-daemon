@@ -1,6 +1,6 @@
-import { ChannelName, MessageCount, SignedSubfeedMessage } from "../common/types/kacheryTypes";
+import { ChannelName, MessageCount, SignedSubfeedMessage } from "../kachery-js/types/kacheryTypes";
 import KacheryDaemonNode from "../KacheryDaemonNode";
-import KacheryHubInterface from "../kacheryHub/KacheryHubInterface";
+import KacheryHubInterface from "../KacheryHubInterface";
 import Subfeed from "./Subfeed";
 
 class RemoteSubfeedMessageDownloader {

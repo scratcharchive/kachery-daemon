@@ -1,5 +1,5 @@
 import GarbageMap from "../common/GarbageMap";
-import { ChannelName, ErrorMessage, TaskHash, TaskStatus } from "../common/types/kacheryTypes";
+import { ChannelName, ErrorMessage, JSONValue, TaskId, TaskStatus } from "../kachery-js/types/kacheryTypes";
 import { randomAlphaString } from "../common/util";
 
 type ListenerCallback = (status: TaskStatus, errMsg: ErrorMessage | undefined) => void
@@ -7,15 +7,16 @@ type ListenerCallback = (status: TaskStatus, errMsg: ErrorMessage | undefined) =
 interface TaskCode extends String {
     __taskCode__: never // phantom type
 }
-const createTaskCode = (channelName: ChannelName, taskHash: TaskHash) => {
-    return `${channelName}:${taskHash}` as any as TaskCode
+const createTaskCode = (channelName: ChannelName, taskId: TaskId) => {
+    return `${channelName}:${taskId}` as any as TaskCode
 }
 
 type OutgoingTask = {
     channelName: ChannelName
-    taskHash: TaskHash
+    taskId: TaskId
     status: TaskStatus
     errorMessage?: ErrorMessage
+    queryResult?: JSONValue
     listenForStatusUpdates: (callback: () => void) => {cancelListener: () => void}
     _callbacks: {[key: string]: () => void}
 }
@@ -24,13 +25,13 @@ export default class OutgoingTaskManager {
     #outgoingTasksByCode = new GarbageMap<TaskCode, OutgoingTask>(null)
     constructor() {
     }
-    createOutgoingTask(channelName: ChannelName, taskHash: TaskHash) {
-        const code = createTaskCode(channelName, taskHash)
+    createOutgoingTask(channelName: ChannelName, taskId: TaskId) {
+        const code = createTaskCode(channelName, taskId)
         if (!this.#outgoingTasksByCode.has(code)) {
             const _callbacks: {[key: string]: () => void} = {}
             const t: OutgoingTask = {
                 channelName,
-                taskHash,
+                taskId,
                 status: 'waiting',
                 listenForStatusUpdates: (callback: () => void) => {
                     const key = randomAlphaString(10)
@@ -43,21 +44,23 @@ export default class OutgoingTaskManager {
             }
             this.#outgoingTasksByCode.set(code, t)
         }
-        const t = this.outgoingTask(channelName, taskHash)
+        const t = this.outgoingTask(channelName, taskId)
         if (!t) throw Error('Unexpected')
         return t
     }
-    outgoingTask(channelName: ChannelName, taskHash: TaskHash) {
-        const code = createTaskCode(channelName, taskHash)
+    outgoingTask(channelName: ChannelName, taskId: TaskId) {
+        const code = createTaskCode(channelName, taskId)
         return this.#outgoingTasksByCode.get(code)
     }
-    updateTaskStatus(channelName: ChannelName, taskHash: TaskHash, status: TaskStatus, errMsg: ErrorMessage | undefined) {
-        const code = createTaskCode(channelName, taskHash)
+    updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errMsg: ErrorMessage | undefined, queryResult: JSONValue | undefined}) {
+        const {channelName, taskId, status, errMsg, queryResult} = args
+        const code = createTaskCode(channelName, taskId)
         const a = this.#outgoingTasksByCode.get(code)
         if (!a) return
         if (a.status !== status) {
             a.status = status
             a.errorMessage = errMsg
+            a.queryResult = queryResult
             for (let k in a._callbacks) {
                 a._callbacks[k]()
             }

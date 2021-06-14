@@ -1,5 +1,5 @@
 import GarbageMap from "../common/GarbageMap";
-import { ChannelName, durationMsecToNumber, elapsedSince, FeedId, MessageCount, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../common/types/kacheryTypes";
+import { ChannelName, durationMsecToNumber, elapsedSince, FeedId, MessageCount, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../kachery-js/types/kacheryTypes";
 import KacheryDaemonNode from "../KacheryDaemonNode";
 
 class IncomingSubfeedSubscriptionManager {

@@ -1,6 +1,6 @@
 import axios from "axios";
 import GarbageMap from "../common/GarbageMap";
-import { byteCount, ByteCount, ChannelName, FileKey, fileKeyHash, scaledDurationMsec, Sha1Hash, sha1OfObject, UrlString } from "../common/types/kacheryTypes";
+import { byteCount, ByteCount, ChannelName, FileKey, fileKeyHash, scaledDurationMsec, Sha1Hash, sha1OfObject, UrlString } from "../kachery-js/types/kacheryTypes";
 import { KacheryStorageManagerInterface } from "../external/ExternalInterface";
 import NodeStats from "../NodeStats";
 

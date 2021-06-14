@@ -1,4 +1,5 @@
-import { ByteCount, ChannelName, DaemonVersion, DurationMsec, ErrorMessage, FeedId, FeedName, FileKey, isArrayOf, isBoolean, isByteCount, isChannelName, isDaemonVersion, isDurationMsec, isErrorMessage, isFeedId, isFeedName, isFileKey, isJSONValue, isMessageCount, isNodeId, isNull, isNumber, isObjectOf, isOneOf, isSha1Hash, isSignedSubfeedMessage, isString, isSubfeedHash, isSubfeedMessage, isSubfeedWatches, isTaskFunctionId, isTaskHash, isTaskKwargs, isTaskStatus, isUrlString, JSONValue, LocalFilePath, MessageCount, NodeId, optional, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedWatches, TaskFunctionId, TaskHash, TaskKwargs, TaskStatus, UrlString, _validateObject } from '../common/types/kacheryTypes';
+import { ByteCount, ChannelName, DaemonVersion, DurationMsec, ErrorMessage, FeedId, FeedName, FileKey, isArrayOf, isBoolean, isByteCount, isChannelName, isDaemonVersion, isDurationMsec, isErrorMessage, isFeedId, isFeedName, isFileKey, isJSONValue, isMessageCount, isNodeId, isNull, isNumber, isObjectOf, isOneOf, isSha1Hash, isSignedSubfeedMessage, isString, isSubfeedHash, isSubfeedMessage, isSubfeedWatches, isTaskFunctionId, isTaskId, isTaskKwargs, isTaskStatus, isUrlString, JSONValue, LocalFilePath, MessageCount, NodeId, optional, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedWatches, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, UrlString, _validateObject } from '../kachery-js/types/kacheryTypes';
+import { isTaskFunctionType, TaskFunctionType } from '../kachery-js/types/pubsubMessages';
 
 export interface DaemonApiProbeResponse {
     success: boolean,
@@ -287,12 +288,14 @@ export const isFeedApiGetFeedIdResponse = (x: any): x is FeedApiGetFeedIdRespons
 export type RegisteredTaskFunction = {
     channelName: string
     taskFunctionId: TaskFunctionId
+    taskFunctionType: TaskFunctionType
 }
 
 export const isRegisteredTaskFunction = (x: any): x is RegisteredTaskFunction => {
     return _validateObject(x, {
         channelName: isChannelName,
-        taskFunctionId: isTaskFunctionId
+        taskFunctionId: isTaskFunctionId,
+        taskFunctionType: isTaskFunctionType
     })
 }
 
@@ -309,17 +312,19 @@ export const isTaskRegisterTaskFunctionsRequest = (x: any): x is TaskRegisterTas
 
 export type RequestedTask = {
     channelName: ChannelName
-    taskHash: TaskHash
+    taskId: TaskId
     taskFunctionId: TaskFunctionId
     kwargs: TaskKwargs
+    taskFunctionType: TaskFunctionType
 }
 
 const isRequestedTask = (x: any): x is RequestedTask => {
     return _validateObject(x, {
         channelName: isChannelName,
-        taskHash: isTaskHash,
+        taskId: isTaskId,
         taskFunctionId: isTaskFunctionId,
-        kwargs: isTaskKwargs
+        kwargs: isTaskKwargs,
+        taskFunctionType: isTaskFunctionType
     })
 }
 
@@ -336,16 +341,18 @@ export const isTaskRegisterTaskFunctionsResponse = (x: any): x is TaskRegisterTa
 
 export interface TaskUpdateTaskStatusRequest {
     channelName: ChannelName
-    taskHash: TaskHash,
+    taskId: TaskId,
     status: TaskStatus
     errorMessage?: ErrorMessage
+    queryResult?: JSONValue
 }
 export const isTaskUpdateTaskStatusRequest = (x: any): x is TaskUpdateTaskStatusRequest => {
     return _validateObject(x, {
         channelName: isChannelName,
-        taskHash: isTaskHash,
+        taskId: isTaskId,
         status: isTaskStatus,
-        errorMessage: optional(isErrorMessage)
+        errorMessage: optional(isErrorMessage),
+        queryResult: optional(isJSONValue)
     })
 }
 
@@ -360,14 +367,14 @@ export const isTaskUpdateTaskStatusResponse = (x: any): x is TaskUpdateTaskStatu
 
 export type TaskCreateSignedTaskResultUploadUrlRequest = {
     channelName: ChannelName
-    taskHash: TaskHash
+    taskId: TaskId
     size: ByteCount
 }
 
 export const isTaskCreateSignedTaskResultUploadUrlRequest = (x: any): x is TaskCreateSignedTaskResultUploadUrlRequest => {
     return _validateObject(x, {
         channelName: isChannelName,
-        taskHash: isSha1Hash,
+        taskId: isSha1Hash,
         size: isByteCount
     })
 }
@@ -384,51 +391,57 @@ export const isTaskCreateSignedTaskResultUploadUrlResponse = (x: any): x is Task
     })
 }
 
-export type TaskRequestTaskResultRequest = {
+export type TaskRequestTaskRequest = {
     channelName: ChannelName
     taskFunctionId: TaskFunctionId
     taskKwargs: TaskKwargs
+    taskFunctionType: TaskFunctionType
     timeoutMsec: DurationMsec
 }
 
-export const isTaskRequestTaskResultRequest = (x: any): x is TaskRequestTaskResultRequest => {
+export const isTaskRequestTaskRequest = (x: any): x is TaskRequestTaskRequest => {
     return _validateObject(x, {
         channelName: isChannelName,
         taskFunctionId: isTaskFunctionId,
         taskKwargs: isTaskKwargs,
+        taskFunctionType: isTaskFunctionType,
         timeoutMsec: isDurationMsec
     })
 }
 
-export type TaskRequestTaskResultResponse = {
+export type TaskRequestTaskResponse = {
     success: boolean
-    taskHash: TaskHash,
+    taskId: TaskId,
     status: TaskStatus
     errorMessage?: ErrorMessage
     taskResultUrl?: UrlString
+    queryResult?: JSONValue
 }
 
-export const isTaskRequestTaskResultResponse = (x: any): x is TaskRequestTaskResultResponse => {
+export const isTaskRequestTaskResponse = (x: any): x is TaskRequestTaskResponse => {
     return _validateObject(x, {
         success: isBoolean,
-        taskHash: isTaskHash,
+        taskId: isTaskId,
         status: isTaskStatus,
         errorMessage: optional(isErrorMessage),
-        taskResultUrl: optional(isUrlString)
+        taskResultUrl: optional(isUrlString),
+        queryResult: optional(isJSONValue)
     })
 }
 
 
 export type TaskWaitForTaskResultRequest = {
     channelName: ChannelName
-    taskHash: TaskHash
+    taskId: TaskId
+    taskFunctionType: TaskFunctionType,
     timeoutMsec: DurationMsec
 }
 
 export const isTaskWaitForTaskResultRequest = (x: any): x is TaskWaitForTaskResultRequest => {
     return _validateObject(x, {
         channelName: isChannelName,
-        taskHash: isTaskHash,
+        taskId: isTaskId,
+        taskFunctionType: isTaskFunctionType,
         timeoutMsec: isDurationMsec
     })
 }
@@ -438,6 +451,7 @@ export type TaskWaitForTaskResultResponse = {
     status: TaskStatus
     errorMessage?: ErrorMessage
     taskResultUrl?: UrlString
+    queryResult?: JSONValue
 }
 
 export const isTaskWaitForTaskResultResponse = (x: any): x is TaskWaitForTaskResultResponse => {
@@ -445,6 +459,7 @@ export const isTaskWaitForTaskResultResponse = (x: any): x is TaskWaitForTaskRes
         success: isBoolean,
         status: isTaskStatus,
         errorMessage: optional(isErrorMessage),
-        taskResultUrl: optional(isUrlString)
+        taskResultUrl: optional(isUrlString),
+        queryResult: optional(isJSONValue)
     })
 }

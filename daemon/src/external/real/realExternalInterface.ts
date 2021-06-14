@@ -1,5 +1,5 @@
 import dgram from 'dgram';
-import { LocalFilePath } from '../../common/types/kacheryTypes';
+import { LocalFilePath } from '../../kachery-js/types/kacheryTypes';
 import MutableManager from '../../mutables/MutableManager';
 import ExternalInterface, { LocalFeedManagerInterface } from '../ExternalInterface';
 import { httpGetDownload, httpPostJson } from "./httpRequests";

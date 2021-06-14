@@ -1,4 +1,4 @@
-import { ByteCount, isEqualTo, isOneOf, JSONObject, NodeId, optional, _validateObject } from "./common/types/kacheryTypes";
+import { ByteCount, isEqualTo, isOneOf, JSONObject, NodeId, optional, _validateObject } from "./kachery-js/types/kacheryTypes";
 import KacheryDaemonNode from "./KacheryDaemonNode";
 
 export interface NodeStatsInterface {

@@ -1,4 +1,4 @@
-import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskHash, isTaskKwargs, isTaskStatus, MessageCount, NodeId, optional, Signature, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskHash, TaskKwargs, TaskStatus, _validateObject } from "./kacheryTypes";
+import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isJSONValue, isMessageCount, isNodeId, isOneOf, isSignature, isString, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskId, isTaskKwargs, isTaskStatus, JSONValue, MessageCount, NodeId, optional, Signature, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, _validateObject } from "./kacheryTypes";
 
 export type RequestFileMessageBody = {
     type: 'requestFile',
@@ -60,39 +60,47 @@ export const isRequestSubfeedMessageBody = (x: any): x is RequestSubfeedMessageB
 
 export type UpdateTaskStatusMessageBody = {
     type: 'updateTaskStatus',
-    taskHash: TaskHash,
+    taskId: TaskId,
     status: TaskStatus,
     errorMessage?: ErrorMessage
+    queryResult?: JSONValue
 }
 
 export const isUpdateTaskStatusMessageBody = (x: any): x is UpdateTaskStatusMessageBody => {
     return _validateObject(x, {
         type: isEqualTo('updateTaskStatus'),
-        taskHash: isTaskHash,
+        taskId: isTaskId,
         status: isTaskStatus,
-        errorMessage: optional(isErrorMessage)
+        errorMessage: optional(isErrorMessage),
+        queryResult: optional(isJSONValue)
     })
 }
 
-export type RequestTaskResultMessageBody = {
-    type: 'requestTaskResult',
-    taskHash: TaskHash,
+export type TaskFunctionType = 'pure-calculation' | 'query' | 'action'
+export const isTaskFunctionType = (x: any) => {
+    if (!isString(x)) return false
+    return ['pure-calculation', 'query', 'action'].includes(x)
+}
+
+export type RequestTaskMessageBody = {
+    type: 'requestTask',
+    taskId: TaskId,
     taskFunctionId: TaskFunctionId,
+    taskFunctionType: TaskFunctionType,
     taskKwargs: TaskKwargs
 }
 
-export const isRequestTaskResultMessageBody = (x: any): x is RequestTaskResultMessageBody => {
+export const isRequestTaskMessageBody = (x: any): x is RequestTaskMessageBody => {
     return _validateObject(x, {
-        type: isEqualTo('requestTaskResult'),
-        taskHash: isTaskHash,
+        type: isEqualTo('requestTask'),
+        taskId: isTaskId,
         taskFunctionId: isTaskFunctionId,
+        taskFunctionType: isTaskFunctionType,
         taskKwargs: isTaskKwargs
     })
 }
 
-
-
-export type KacheryHubPubsubMessageBody = RequestFileMessageBody | UploadFileStatusMessageBody | UpdateSubfeedMessageCountMessageBody | RequestSubfeedMessageBody | UpdateTaskStatusMessageBody | RequestTaskResultMessageBody
+export type KacheryHubPubsubMessageBody = RequestFileMessageBody | UploadFileStatusMessageBody | UpdateSubfeedMessageCountMessageBody | RequestSubfeedMessageBody | UpdateTaskStatusMessageBody | RequestTaskMessageBody
 
 export const isKacheryHubPubsubMessageBody = (x: any): x is KacheryHubPubsubMessageBody => {
     return isOneOf([
@@ -101,7 +109,7 @@ export const isKacheryHubPubsubMessageBody = (x: any): x is KacheryHubPubsubMess
         isUpdateSubfeedMessageCountMessageBody,
         isRequestSubfeedMessageBody,
         isUpdateTaskStatusMessageBody,
-        isRequestTaskResultMessageBody
+        isRequestTaskMessageBody
     ])(x)
 }
 

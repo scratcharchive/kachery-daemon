@@ -1,4 +1,4 @@
-import { maxDuration, scaledDurationMsec, unscaledDurationMsec } from "../common/types/kacheryTypes";
+import { maxDuration, scaledDurationMsec, unscaledDurationMsec } from "../kachery-js/types/kacheryTypes";
 
 const _d = (a: number, b: number) => {
     return maxDuration(scaledDurationMsec(a), unscaledDurationMsec(b))

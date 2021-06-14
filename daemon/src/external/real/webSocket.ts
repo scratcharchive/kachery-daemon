@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from '../../common/types/kacheryTypes';
+import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from '../../kachery-js/types/kacheryTypes';
 import { WebSocketInterface, WebSocketServerInterface } from '../ExternalInterface';
 
 const webSocketInterfaceFromWebSocket = (ws: WebSocket): WebSocketInterface => {
