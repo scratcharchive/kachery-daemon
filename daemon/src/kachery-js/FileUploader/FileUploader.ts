@@ -1,8 +1,8 @@
 import axios from "axios";
-import GarbageMap from "../common/GarbageMap";
-import { byteCount, ByteCount, ChannelName, FileKey, fileKeyHash, scaledDurationMsec, Sha1Hash, sha1OfObject, UrlString } from "../kachery-js/types/kacheryTypes";
-import { KacheryStorageManagerInterface } from "../external/ExternalInterface";
+import { ByteCount, ChannelName, FileKey, fileKeyHash, scaledDurationMsec, Sha1Hash, sha1OfObject, UrlString } from "../types/kacheryTypes";
+import GarbageMap from "../util/GarbageMap";
 import NodeStats from "../NodeStats";
+import { KacheryStorageManagerInterface } from "../ExternalInterface";
 
 export type SignedFileUploadUrlCallback = (a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) => Promise<UrlString>
 

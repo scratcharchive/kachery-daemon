@@ -492,7 +492,7 @@ export const isChannelName = (x: any): x is ChannelName => {
     let result = true
     x.split(".").forEach((element) => {
         if (element.length === 0) result = false
-        if (!/^[a-zA-Z0-9@-_]([a-zA-Z0-9@-_]*[a-zA-Z0-9@-_])?$/.test(element)) result = false
+        if (!/^[a-zA-Z0-9@_-]([a-zA-Z0-9@_-]*[a-zA-Z0-9@_-])?$/.test(element)) result = false
     })
     return result
 }
@@ -550,6 +550,10 @@ export interface TaskKwargs  {
 export const isTaskKwargs = (x: any): x is TaskKwargs => {
     if (!isJSONObject(x)) return false
     return true
+}
+export const taskKwargs = (x: any) => {
+    if (!isTaskKwargs(x)) throw Error('Invalid task kwargs')
+    return x as TaskKwargs
 }
 
 // ErrorMessage
@@ -929,7 +933,7 @@ export const sha1OfString = (x: string): Sha1Hash => {
     return sha1sum.digest('hex') as any as Sha1Hash
 }
 // Thanks: https://stackoverflow.com/questions/16167581/sort-object-properties-and-json-stringify
-export const JSONStringifyDeterministic = ( obj: Object, space: string | number | undefined =undefined ) => {
+export const JSONStringifyDeterministic = ( obj: any, space: string | number | undefined =undefined ) => {
     var allKeys: string[] = [];
     JSON.stringify( obj, function( key, value ){ allKeys.push( key ); return value; } )
     allKeys.sort();

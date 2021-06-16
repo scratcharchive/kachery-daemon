@@ -1,11 +1,9 @@
-import GarbageMap from "../common/GarbageMap"
-import { DurationMsec, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, SubfeedPosition, zeroTimestamp } from "../kachery-js/types/kacheryTypes"
+import { DurationMsec, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, SubfeedPosition, zeroTimestamp } from "../types/kacheryTypes"
+import GarbageMap from "../util/GarbageMap"
 
 class OutgoingSubfeedSubscriptionManager {
     #outgoingSubscriptions = new GarbageMap<string, OutgoingSubfeedSubscription>(scaledDurationMsec(300 * 60 * 1000))
     #subscribeToRemoteSubfeedCallbacks: ((feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => void)[] = []
-    constructor() {
-    }
     async createOrRenewOutgoingSubscription(feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition): Promise<void> {
         const subfeedCode = makeSubscriptionCode(feedId, subfeedHash)
         let S = this.#outgoingSubscriptions.get(subfeedCode)

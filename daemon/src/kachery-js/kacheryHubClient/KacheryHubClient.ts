@@ -1,9 +1,10 @@
 import Ably from 'ably'
-import { nodeIdToPublicKey, verifySignature } from "../types/crypto_util"
+import { nodeIdToPublicKey, verifyPubsubMessage } from "../types/crypto_util"
 import { isPubsubAuth, PubsubAuth } from "../types/kacheryHubTypes"
 import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, GetChannelConfigRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isCreateSignedTaskResultUploadUrlResponse, isGetChannelConfigResponse, isGetNodeConfigResponse, KacheryNodeRequestBody, ReportRequestBody } from "../types/kacheryNodeRequestTypes"
 import { ByteCount, ChannelName, FeedId, JSONValue, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, TaskId, UserId } from "../types/kacheryTypes"
 import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../types/pubsubMessages'
+import randomAlphaString from '../util/randomAlphaString'
 import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
 import createPubsubClient, { PubsubClient, PubsubMessage } from "./createPubsubClient"
 
@@ -17,7 +18,7 @@ export type IncomingKacheryHubPubsubMessage = {
 class KacheryHubClient {
     #pubsubClients: {[key: string]: PubsubClient} = {}
     #incomingPubsubMessageCallbacks: {[key: string]: (x: IncomingKacheryHubPubsubMessage) => void} = {}
-    constructor(private opts: {nodeId: NodeId, sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>, ownerId?: UserId, nodeLabel: NodeLabel, kacheryHubUrl: string}) {
+    constructor(private opts: {nodeId: NodeId, sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>, ownerId?: UserId, nodeLabel?: NodeLabel, kacheryHubUrl: string}) {
     }
     async fetchNodeConfig() {
         if (!this.opts.ownerId) throw Error('No owner ID in fetchNodeConfig')
@@ -68,6 +69,7 @@ class KacheryHubClient {
     }
     async report() {
         if (!this.opts.ownerId) throw Error('No owner ID in report')
+        if (!this.opts.nodeLabel) throw Error('No node label in report')
         const reqBody: ReportRequestBody = {
             type: 'report',
             nodeId: this.nodeId,
@@ -156,19 +158,24 @@ class KacheryHubClient {
             client.getChannel(pubsubChannelName).subscribe((msg: PubsubMessage) => {
                 const messageData = msg.data
                 if (isKacheryHubPubsubMessageData(messageData)) {
-                    if (!verifySignature(messageData.body, messageData.signature, nodeIdToPublicKey(messageData.fromNodeId))) {
-                        console.warn(`Problem verifying signature on pubsub message: channel=${channelName} pubsubChannelName=${pubsubChannelName}`)
-                        return
-                    }
-                    for (let k in this.#incomingPubsubMessageCallbacks) {
-                        const cb = this.#incomingPubsubMessageCallbacks[k]
-                        cb({
-                            channelName,
-                            pubsubChannelName,
-                            fromNodeId: messageData.fromNodeId,
-                            message: messageData.body
-                        })
-                    }
+                    verifyPubsubMessage(messageData.body as any as JSONValue, nodeIdToPublicKey(messageData.fromNodeId), messageData.signature).then(verified => {
+                        if (!verified) {
+                            console.warn(messageData)
+                            console.warn(`Problem verifying signature on pubsub message: channel=${channelName} pubsubChannelName=${pubsubChannelName}`, messageData.fromNodeId)
+                            return
+                        }
+                        for (let k in this.#incomingPubsubMessageCallbacks) {
+                            const cb = this.#incomingPubsubMessageCallbacks[k]
+                            cb({
+                                channelName,
+                                pubsubChannelName,
+                                fromNodeId: messageData.fromNodeId,
+                                message: messageData.body
+                            })
+                        }
+                    }).catch(err => {
+                        console.log('Problem verifying signature on pubsub message', err)
+                    })
                 }
                 else {
                     console.warn(`Invalid pubsub message data: channel=${channelName}, pubsubChannel=${pubsubChannelName}`)
@@ -200,18 +207,6 @@ class KacheryHubClient {
     _kacheryHubUrl() {
         return this.opts.kacheryHubUrl
     }
-}
-
-export const randomAlphaString = (num_chars: number) => {
-    if (!num_chars) {
-        /* istanbul ignore next */
-        throw Error('randomAlphaString: num_chars needs to be a positive integer.')
-    }
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    for (var i = 0; i < num_chars; i++)
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    return text;
 }
 
 export default KacheryHubClient

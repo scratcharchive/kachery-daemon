@@ -1,6 +1,7 @@
 import axios from "axios"
-import { ChannelName, JSONValue } from "./kachery-js/types/kacheryTypes"
 import NodeStats from "./NodeStats"
+import { ChannelName, JSONValue } from "./types/kacheryTypes"
+import cacheBust from "./util/cacheBust"
 
 export type GoogleObjectStorageClientOpts = {
     bucketName: string
@@ -39,27 +40,6 @@ class GoogleObjectStorageClient {
         }
         return ret
     }
-}
-
-const cacheBust = (url: string) => {
-    if (url.includes('?')) {
-        return url + `&cb=${randomAlphaString(10)}`
-    }
-    else {
-        return url + `?cb=${randomAlphaString(10)}`
-    }
-}
-
-export const randomAlphaString = (num_chars: number) => {
-    if (!num_chars) {
-        /* istanbul ignore next */
-        throw Error('randomAlphaString: num_chars needs to be a positive integer.')
-    }
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    for (var i = 0; i < num_chars; i++)
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    return text;
 }
 
 export default GoogleObjectStorageClient

@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import fs from 'fs'
-import { randomAlphaString } from '../../../common/util'
+import { randomAlphaString } from '../../../kachery-js/util/util'
 import { localFilePath, LocalFilePath, Sha1Hash } from '../../../kachery-js/types/kacheryTypes'
 
 const _getTemporaryDirectory = (storageDir: LocalFilePath) => {

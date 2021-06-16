@@ -1,8 +1,8 @@
-import GarbageMap from "../common/GarbageMap";
-import { ChannelName, ErrorMessage, JSONValue, TaskId, TaskStatus } from "../kachery-js/types/kacheryTypes";
-import { randomAlphaString } from "../common/util";
+import GarbageMap from "../util/GarbageMap";
+import randomAlphaString from "../util/randomAlphaString";
+import { ChannelName, ErrorMessage, JSONValue, TaskId, TaskStatus } from "../types/kacheryTypes";
 
-type ListenerCallback = (status: TaskStatus, errMsg: ErrorMessage | undefined) => void
+// type ListenerCallback = (status: TaskStatus, errMsg: ErrorMessage | undefined) => void
 
 interface TaskCode extends String {
     __taskCode__: never // phantom type
@@ -23,8 +23,6 @@ type OutgoingTask = {
 
 export default class OutgoingTaskManager {
     #outgoingTasksByCode = new GarbageMap<TaskCode, OutgoingTask>(null)
-    constructor() {
-    }
     createOutgoingTask(channelName: ChannelName, taskId: TaskId) {
         const code = createTaskCode(channelName, taskId)
         if (!this.#outgoingTasksByCode.has(code)) {

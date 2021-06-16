@@ -1,8 +1,8 @@
-import GarbageMap from "../common/GarbageMap";
-import { randomAlphaString } from "../common/util";
-import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, TaskFunctionId, TaskId, TaskKwargs, Timestamp } from "../kachery-js/types/kacheryTypes";
-import { TaskFunctionType } from "../kachery-js/types/pubsubMessages";
-import { RegisteredTaskFunction, RequestedTask } from "../services/daemonApiTypes";
+import GarbageMap from "../util/GarbageMap";
+import randomAlphaString from "../util/randomAlphaString";
+import { RegisteredTaskFunction, RequestedTask } from "../types/kacheryHubTypes";
+import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, TaskFunctionId, TaskId, TaskKwargs, Timestamp } from "../types/kacheryTypes";
+import { TaskFunctionType } from "../types/pubsubMessages";
 
 type RegisteredTaskFunctionGroup = {
     taskFunctions: RegisteredTaskFunction[]
@@ -19,8 +19,6 @@ export default class IncomingTaskManager {
     #registeredTaskFunctionGroups = new GarbageMap<string, RegisteredTaskFunctionGroup>(null)
     #pendingTaskRequests: PendingTaskRequest[] = []
     #processScheduled = false
-    constructor() {
-    }
     async registerTaskFunctions(args: {taskFunctions: RegisteredTaskFunction[], timeoutMsec: DurationMsec}): Promise<RequestedTask[]> {
         const {taskFunctions, timeoutMsec} = args
         return new Promise<RequestedTask[]>((resolve, reject) => {

@@ -1,10 +1,7 @@
-import DataStreamy, { DataStreamyProgress } from './common/DataStreamy'
-import { formatByteCount, sha1MatchesFileKey } from './common/util'
-import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, fileKeyHash, FileManifestChunk, isFileManifest, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from './kachery-js/types/kacheryTypes'
+import DataStreamy, { DataStreamyProgress } from './util/DataStreamy'
+import { formatByteCount, sha1MatchesFileKey } from './util/util'
 import KacheryDaemonNode from './KacheryDaemonNode'
-import axios from 'axios'
-import { httpUrlDownload } from './external/real/httpRequests'
-import { KacheryStorageManager } from './external/real/kacheryStorage/KacheryStorageManager'
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifestChunk, isFileManifest, LocalFilePath, nowTimestamp, Sha1Hash, UrlString } from './types/kacheryTypes'
 
 
 export const loadFileAsync = async (node: KacheryDaemonNode, fileKey: FileKey, opts: {label: string}): Promise<{found: boolean, size: ByteCount, localFilePath: LocalFilePath | null}> => {

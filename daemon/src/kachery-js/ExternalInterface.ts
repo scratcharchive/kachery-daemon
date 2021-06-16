@@ -1,8 +1,7 @@
 import fs from 'fs'
-import DataStreamy from "../common/DataStreamy"
-import { Address, ByteCount, ChannelName, DurationMsec, FeedId, FeedName, FileKey, JSONObject, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "../kachery-js/types/kacheryTypes"
-import MutableManager from "../mutables/MutableManager"
-import NodeStats from "../NodeStats"
+import DataStreamy from "./util/DataStreamy"
+import { Address, ByteCount, ChannelName, DurationMsec, FeedId, FeedName, FileKey, JSONObject, JSONValue, LocalFilePath, NodeId, Port, PrivateKey, Sha1Hash, SignedSubfeedMessage, SubfeedHash, UrlPath, UrlString } from "./types/kacheryTypes"
+import NodeStats from "./NodeStats"
 
 export type HttpPostJsonFunction = ((address: Address, path: UrlPath, data: Object, opts: {timeoutMsec: DurationMsec}) => Promise<JSONObject>)
 export type HttpGetDownloadFunction = ((address: Address, path: UrlPath, stats: NodeStats, channelName: ChannelName | null) => Promise<DataStreamy>)
@@ -69,7 +68,21 @@ export interface LocalFeedManagerInterface {
     appendSignedMessagesToSubfeed: (feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) => Promise<void> // synchronous???!!!
 }
 
-export type CreateLocalFeedManagerFunction = (mutableManager: MutableManager) => LocalFeedManagerInterface
+export type CreateLocalFeedManagerFunction = (mutableManager: MutableManagerInterface) => LocalFeedManagerInterface
+
+export type MutableRecord = {
+    key: JSONValue
+    value: JSONValue
+}
+
+export interface MutableManagerInterface {
+    set: (key: JSONValue, value: JSONValue) => Promise<void>
+    get: (key: JSONValue) => Promise<MutableRecord | undefined>
+    delete: (key: JSONValue) => Promise<void>
+    onSet: (callback: (key: JSONValue) => void) => void
+}
+
+export type CreateMutableManagerFunction = () => MutableManagerInterface
 
 export interface HttpServerInterface {
     close: () => void
@@ -90,6 +103,7 @@ export default interface ExternalInterface {
     createWebSocket: CreateWebSocketFunction,
     createKacheryStorageManager: CreateKacheryStorageManagerFunction,
     createLocalFeedManager: CreateLocalFeedManagerFunction,
+    createMutableManager: CreateMutableManagerFunction,
     startHttpServer: StartHttpServerFunction,
     isMock: boolean
 }

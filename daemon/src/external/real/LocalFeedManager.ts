@@ -1,10 +1,9 @@
 import fs from 'fs';
-import GarbageMap from '../../common/GarbageMap';
-import { createKeyPair, hexToPrivateKey, JSONStringifyDeterministic, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../kachery-js/types/crypto_util';
-import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, _validateObject } from '../../kachery-js/types/kacheryTypes';
-import { isReadableByOthers } from '../../common/util';
-import MutableManager from '../../mutables/MutableManager';
+import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../kachery-js/types/crypto_util';
+import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, _validateObject } from '../../kachery-js/types/kacheryTypes';
+import GarbageMap from '../../kachery-js/util/GarbageMap';
 import LocalFeedsDatabase from './LocalFeedsDatabase';
+import { MutableManagerInterface } from '../../kachery-js/ExternalInterface';
 
 interface FeedConfig {
     feedId: FeedId,
@@ -165,7 +164,7 @@ class OldFeedsConfigManager {
 }
 
 class FeedsConfigManager {
-    constructor(private mutableManager: MutableManager) {
+    constructor(private mutableManager: MutableManagerInterface) {
     }
 
     async addFeed(feedId: FeedId, privateKey: PrivateKeyHex) {
@@ -208,7 +207,7 @@ export default class LocalFeedManager {
     #feedsConfigManager: FeedsConfigManager
     #localFeedsDatabase: LocalFeedsDatabase
     // #localFeedsDatabaseOld: LocalFeedsDatabaseOld
-    constructor(storageDir: LocalFilePath, mutableManager: MutableManager) {
+    constructor(storageDir: LocalFilePath, mutableManager: MutableManagerInterface) {
         if (!fs.existsSync(storageDir.toString())) {
             throw Error(`Storage directory does not exist: ${storageDir}`)
         }
@@ -286,4 +285,12 @@ const readJsonFile = async (path: string, defaultVal: Object): Promise<Object> =
 const writeJsonFile = async (path: string, obj: Object, mode?: fs.Mode) => {
     const txt = JSONStringifyDeterministic(obj, 4);
     await fs.promises.writeFile(path, txt, {mode});
+}
+
+export const isReadableByOthers = (path: string) => {
+    const stat = fs.statSync(path)
+    if ((stat.mode & fs.constants.S_IROTH) || (stat.mode & fs.constants.S_IRGRP)) {
+        return true
+    }
+    return false
 }

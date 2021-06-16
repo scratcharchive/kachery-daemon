@@ -1,9 +1,7 @@
+import fs from 'fs';
 import { Database, open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import { JSONStringifyDeterministic } from '../kachery-js/types/crypto_util';
-import { sleepMsec } from '../common/util';
-import { JSONValue, LocalFilePath, Sha1Hash, unscaledDurationMsec } from '../kachery-js/types/kacheryTypes';
-import fs from 'fs'
+import { JSONStringifyDeterministic, JSONValue, LocalFilePath, Sha1Hash, sleepMsec, unscaledDurationMsec } from '../../../kachery-js/types/kacheryTypes';
 
 export type MutableRecord = {
     key: JSONValue
@@ -21,7 +19,7 @@ class MutableDatabase {
     async _initialize() {
         if (this.#initialized) return
         while (this.#initializing) {
-            await sleepMsec(unscaledDurationMsec(100))
+            await sleepMsec(100)
         }
         if (this.#initialized) return
         this.#initializing = true

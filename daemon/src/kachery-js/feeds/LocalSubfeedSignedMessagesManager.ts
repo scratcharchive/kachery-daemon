@@ -1,6 +1,6 @@
-import { verifySignatureJson } from '../kachery-js/types/crypto_util';
-import { LocalFeedManagerInterface } from '../external/ExternalInterface';
-import { FeedId, JSONObject, messageCount, PublicKey, Signature, SignedSubfeedMessage, SubfeedHash } from '../kachery-js/types/kacheryTypes';
+import { LocalFeedManagerInterface } from '../ExternalInterface';
+import { verifySignatureJson } from '../types/crypto_util';
+import { FeedId, JSONObject, messageCount, PublicKey, Signature, SignedSubfeedMessage, SubfeedHash } from '../types/kacheryTypes';
 
 class LocalSubfeedSignedMessagesManager {
     #signedMessages: SignedSubfeedMessage[] | null = null // in-memory cache
@@ -47,6 +47,13 @@ class LocalSubfeedSignedMessagesManager {
             throw Error('#signedMessages is null. Perhaps getNumMessages was called before subfeed was initialized.');
         }
         return messageCount(this.#signedMessages.length)
+    }
+    getMessages() {
+        if (this.#signedMessages === null) {
+            /* istanbul ignore next */
+            throw Error('#signedMessages is null. Perhaps getMessages was called before subfeed was initialized.');
+        }
+        return this.#signedMessages.map(m => m.body.message)
     }
     getSignedMessage(i: number) {
         if (this.#signedMessages === null) {

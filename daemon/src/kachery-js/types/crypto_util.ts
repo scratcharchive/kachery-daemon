@@ -1,6 +1,7 @@
 import crypto from 'crypto';
-import { elapsedSince, FeedId, JSONObject, KeyPair, NodeId, PrivateKey, PrivateKeyHex, PublicKey, PublicKeyHex, Signature, Timestamp } from './kacheryTypes';
-import kacheryP2PSerialize from '../kacheryP2PSerialize';
+import { elapsedSince, FeedId, isSignature, JSONObject, JSONStringifyDeterministic, JSONValue, KeyPair, NodeId, PrivateKey, PrivateKeyHex, PublicKey, PublicKeyHex, sha1OfString, Signature, Timestamp } from './kacheryTypes';
+import kacheryP2PSerialize from '../util/kacheryP2PSerialize';
+import * as ed from 'noble-ed25519'
 
 const ed25519PubKeyPrefix = "302a300506032b6570032100";
 const ed25519PrivateKeyPrefix = "302e020100300506032b657004220420";
@@ -160,10 +161,33 @@ export const createKeyPair = () => {
     }
 }
 
-// Thanks: https://stackoverflow.com/questions/16167581/sort-object-properties-and-json-stringify
-export const JSONStringifyDeterministic = ( obj: Object, space: string | number | undefined =undefined ) => {
-    var allKeys: string[] = [];
-    JSON.stringify( obj, function( key, value ){ allKeys.push( key ); return value; } )
-    allKeys.sort();
-    return JSON.stringify( obj, allKeys, space );
+// // Thanks: https://stackoverflow.com/questions/16167581/sort-object-properties-and-json-stringify
+// export const JSONStringifyDeterministic = ( obj: Object, space: string | number | undefined =undefined ) => {
+//     var allKeys: string[] = [];
+//     JSON.stringify( obj, function( key, value ){ allKeys.push( key ); return value; } )
+//     allKeys.sort();
+//     return JSON.stringify( obj, allKeys, space );
+// }
+
+export const signPubsubMessage = async (messageBody: JSONValue, keyPair: KeyPair): Promise<Signature> => {
+    const messageHash = sha1OfString(JSONStringifyDeterministic(messageBody))
+    const messageHashBuffer = Buffer.from(messageHash.toString(), 'hex')
+    const privateKeyHex = privateKeyToHex(keyPair.privateKey)
+    const privateKeyBuffer = Buffer.from(privateKeyHex.toString(), 'hex')
+    const signature = await ed.sign(messageHashBuffer, privateKeyBuffer)
+    const signatureHex = Buffer.from(signature).toString('hex')
+    if (!isSignature(signatureHex)) throw Error('Problem signing message')
+    const okay = await verifyPubsubMessage(messageBody, keyPair.publicKey, signatureHex)
+    if (!okay) throw Error('Problem verifying pubsub message signature')
+    return signatureHex
+}
+
+export const verifyPubsubMessage = async (messageBody: JSONValue, publicKey: PublicKey, signature: Signature): Promise<boolean> => {
+    const messageHash = sha1OfString(JSONStringifyDeterministic(messageBody))
+    const messageHashBuffer = Buffer.from(messageHash.toString(), 'hex')
+    const publicKeyHex = publicKeyToHex(publicKey)
+    const publicKeyBuffer = Buffer.from(publicKeyHex.toString(), 'hex')
+    const signatureBuffer = Buffer.from(signature.toString(), 'hex')
+    const okay = await ed.verify(signatureBuffer, messageHashBuffer, publicKeyBuffer)
+    return okay
 }

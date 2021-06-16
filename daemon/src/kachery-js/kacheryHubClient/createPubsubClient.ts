@@ -1,4 +1,4 @@
-import { ChannelName, channelName, JSONObject, JSONValue, pubsubChannelName, PubsubChannelName } from "../types/kacheryTypes"
+import { JSONValue, PubsubChannelName } from "../types/kacheryTypes"
 import AblyPubsubClient, { AblyAuthCallback } from "./AblyPubsubClient"
 
 export interface PubsubMessage {

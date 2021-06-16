@@ -1,17 +1,16 @@
 import axios from "axios";
-import GoogleObjectStorageClient, { randomAlphaString } from "./GoogleObjectStorageClient";
-import computeTaskHash from "./kachery-js/computeTaskHash";
-import KacheryHubClient, { IncomingKacheryHubPubsubMessage } from "./kachery-js/kacheryHubClient/KacheryHubClient";
-import { getSignature, publicKeyHexToNodeId, publicKeyToHex } from "./kachery-js/types/crypto_util";
-import { NodeConfig } from "./kachery-js/types/kacheryHubTypes";
-import { KacheryNodeRequest, KacheryNodeRequestBody } from "./kachery-js/types/kacheryNodeRequestTypes";
-import { ByteCount, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSha1Hash, isSignedSubfeedMessage, JSONValue, KeyPair, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "./kachery-js/types/kacheryTypes";
-import { isTaskFunctionType, KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, RequestFileMessageBody, RequestSubfeedMessageBody, RequestTaskMessageBody, TaskFunctionType, UpdateSubfeedMessageCountMessageBody, UpdateTaskStatusMessageBody, UploadFileStatusMessageBody } from "./kachery-js/types/pubsubMessages";
-import urlFromUri from "./kachery-js/urlFromUri";
+import GoogleObjectStorageClient from "./GoogleObjectStorageClient";
+import KacheryHubClient, { IncomingKacheryHubPubsubMessage } from "./kacheryHubClient/KacheryHubClient";
 import NodeStats from "./NodeStats";
-import { RegisteredTaskFunction, RequestedTask } from "./services/daemonApiTypes";
 import IncomingTaskManager from "./tasks/IncomingTaskManager";
 import OutgoingTaskManager from "./tasks/outgoingTaskManager";
+import { NodeConfig, RegisteredTaskFunction, RequestedTask } from "./types/kacheryHubTypes";
+import { KacheryNodeRequestBody } from "./types/kacheryNodeRequestTypes";
+import { ByteCount, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSha1Hash, isSignedSubfeedMessage, JSONValue, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "./types/kacheryTypes";
+import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, RequestFileMessageBody, RequestSubfeedMessageBody, RequestTaskMessageBody, TaskFunctionType, UpdateSubfeedMessageCountMessageBody, UpdateTaskStatusMessageBody, UploadFileStatusMessageBody } from "./types/pubsubMessages";
+import computeTaskHash from "./util/computeTaskHash";
+import randomAlphaString from "./util/randomAlphaString";
+import urlFromUri from "./util/urlFromUri";
 
 type IncomingFileRequestCallback = (args: {fileKey: FileKey, fromNodeId: NodeId, channelName: ChannelName}) => void
 
@@ -41,18 +40,8 @@ class KacheryHubInterface {
     #updateSubfeedMessageCountCallbacks: ((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) => void)[] = []
     #incomingTaskManager: IncomingTaskManager
     #outgoingTaskManager: OutgoingTaskManager
-    constructor(private opts: {keyPair: KeyPair, ownerId?: UserId, nodeLabel: NodeLabel, kacheryHubUrl: string, nodeStats: NodeStats}) {
-        const {keyPair, ownerId, nodeLabel, kacheryHubUrl} = opts
-        const nodeId = publicKeyHexToNodeId(publicKeyToHex(keyPair.publicKey))
-        const sendKacheryNodeRequest = async (requestBody: KacheryNodeRequestBody): Promise<JSONValue> => {
-            const request: KacheryNodeRequest = {
-                body: requestBody,
-                nodeId,
-                signature: getSignature(requestBody, keyPair)
-            }
-            const x = await axios.post(`${kacheryHubUrl}/api/kacheryNode`, request)
-            return x.data
-        }
+    constructor(private opts: {nodeId: NodeId, sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>, signPubsubMessage: (messageBody: KacheryHubPubsubMessageBody) => Promise<Signature>, ownerId?: UserId, nodeLabel?: NodeLabel, kacheryHubUrl: string, nodeStats: NodeStats}) {
+        const {nodeId, sendKacheryNodeRequest, ownerId, nodeLabel, kacheryHubUrl} = opts
         this.#kacheryHubClient = new KacheryHubClient({nodeId, sendKacheryNodeRequest, ownerId, nodeLabel, kacheryHubUrl})
         this.#kacheryHubClient.onIncomingPubsubMessage((x: IncomingKacheryHubPubsubMessage) => {
             this._handleKacheryHubPubsubMessage(x)
@@ -343,8 +332,8 @@ class KacheryHubInterface {
         }
         return subfeedJson
     }
-    async updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errorMessage: ErrorMessage | undefined}) {
-        const { channelName, taskId, status } = args
+    async updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errorMessage: ErrorMessage | undefined, queryResult: JSONValue | undefined}) {
+        const { channelName, taskId, status, errorMessage, queryResult } = args
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) {
@@ -370,7 +359,8 @@ class KacheryHubInterface {
             type: 'updateTaskStatus',
             taskId,
             status,
-            errorMessage: args.errorMessage
+            errorMessage,
+            queryResult
         }
         this._publishMessageToPubsubChannel(channelName, pcn, msg)
     }
@@ -518,14 +508,15 @@ class KacheryHubInterface {
         if (!x) return undefined
         return x
     }
-    _publishMessageToPubsubChannel(channelName: ChannelName, pubsubChannelName: PubsubChannelName, messageBody: KacheryHubPubsubMessageBody) {
+    async _publishMessageToPubsubChannel(channelName: ChannelName, pubsubChannelName: PubsubChannelName, messageBody: KacheryHubPubsubMessageBody) {
         const pubsubClient = this.#kacheryHubClient.getPubsubClientForChannel(channelName)
         if (pubsubClient) {
             const pubsubChannel = pubsubClient.getChannel(pubsubChannelName)
+            const signature = await this.opts.signPubsubMessage(messageBody)
             const m: KacheryHubPubsubMessageData = {
                 body: messageBody,
                 fromNodeId: this.#kacheryHubClient.nodeId,
-                signature: getSignature(messageBody, this.opts.keyPair)
+                signature
             }
             this.opts.nodeStats.reportMessagesSent(1, channelName)
             pubsubChannel.publish({data: m as any as JSONValue})    

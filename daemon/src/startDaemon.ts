@@ -1,6 +1,13 @@
-import ExternalInterface from './external/ExternalInterface';
-import { NodeLabel, Port, UserId } from './kachery-js/types/kacheryTypes';
-import KacheryDaemonNode from './KacheryDaemonNode';
+import axios from 'axios';
+import fs from 'fs';
+import { isReadableByOthers } from './external/real/LocalFeedManager';
+import MutableManager from './external/real/mutables/MutableManager';
+import ExternalInterface from './kachery-js/ExternalInterface';
+import KacheryDaemonNode from './kachery-js/KacheryDaemonNode';
+import { createKeyPair, getSignature, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyHexToNodeId, publicKeyToHex, signPubsubMessage, verifySignature } from './kachery-js/types/crypto_util';
+import { KacheryNodeRequest, KacheryNodeRequestBody } from './kachery-js/types/kacheryNodeRequestTypes';
+import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, Signature, UserId } from './kachery-js/types/kacheryTypes';
+import { KacheryHubPubsubMessageBody } from './kachery-js/types/pubsubMessages';
 import ClientAuthService from './services/ClientAuthService';
 import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
@@ -43,18 +50,51 @@ const startDaemon = async (args: {
         externalInterface,
         opts
     } = args
+
+    const kacheryStorageManager = externalInterface.createKacheryStorageManager()
+
+
+    const storageDir = kacheryStorageManager.storageDir()
+    const keyPair = storageDir ? _loadKeypair(storageDir) : createKeyPair()
+    const nodeId = publicKeyHexToNodeId(publicKeyToHex(keyPair.publicKey)) // get the node id from the public key
+
+    if (storageDir) {
+        fs.writeFileSync(`${storageDir}/kachery-node-id`, `${nodeId}`)
+    }
+    const mutableManager = new MutableManager(storageDir)
+    const localFeedManager = externalInterface.createLocalFeedManager(mutableManager)
+
+    const sendKacheryNodeRequest = async (requestBody: KacheryNodeRequestBody): Promise<JSONValue> => {
+        const request: KacheryNodeRequest = {
+            body: requestBody,
+            nodeId,
+            signature: getSignature(requestBody, keyPair)
+        }
+        const x = await axios.post(`${opts.kacheryHubUrl}/api/kacheryNode`, request)
+        return x.data
+    }
+    const signPubsubMessage2 = async (messageBody: KacheryHubPubsubMessageBody): Promise<Signature> => {
+        return await signPubsubMessage(messageBody as any as JSONValue, keyPair)
+    }
+
     const kNode = new KacheryDaemonNode({
         verbose,
+        nodeId,
+        sendKacheryNodeRequest,
+        signPubsubMessage: signPubsubMessage2,
         label,
         ownerId,
-        externalInterface,
+        kacheryStorageManager,
+        mutableManager,
+        localFeedManager,
         opts: {
-            kacheryHubUrl: opts.kacheryHubUrl
+            kacheryHubUrl: opts.kacheryHubUrl,
+            verifySubfeedMessageSignatures: true
         }
     })
 
     // Start the daemon http server
-    const daemonApiServer = new DaemonApiServer(kNode, { verbose });
+    const daemonApiServer = new DaemonApiServer(kNode, externalInterface, { verbose });
     if (opts.services.daemonServer && (daemonApiPort !== null)) {
         await daemonApiServer.listen(daemonApiPort);
         console.info(`Daemon http server listening on port ${daemonApiPort}`)
@@ -90,6 +130,59 @@ const startDaemon = async (args: {
         clientAuthService,
         node: kNode,
         stop: _stop
+    }
+}
+
+const _loadKeypair = (storageDir: LocalFilePath): KeyPair => {
+    if (!fs.existsSync(storageDir.toString())) {
+        /* istanbul ignore next */
+        throw Error(`Storage directory does not exist: ${storageDir}`)
+    }
+    const publicKeyPath = `${storageDir.toString()}/public.pem`
+    const privateKeyPath = `${storageDir.toString()}/private.pem`
+    if (fs.existsSync(publicKeyPath)) {
+        /* istanbul ignore next */
+        if (!fs.existsSync(privateKeyPath)) {
+            throw Error(`Public key file exists, but secret key file does not.`)
+        }
+    }
+    else {
+        const { publicKey, privateKey } = createKeyPair()
+        fs.writeFileSync(publicKeyPath, publicKey.toString(), { encoding: 'utf-8' })
+        fs.writeFileSync(privateKeyPath, privateKey.toString(), { encoding: 'utf-8', mode: fs.constants.S_IRUSR | fs.constants.S_IWUSR})
+        fs.chmodSync(publicKeyPath, fs.constants.S_IRUSR | fs.constants.S_IWUSR)
+        fs.chmodSync(privateKeyPath, fs.constants.S_IRUSR | fs.constants.S_IWUSR)
+    }
+
+    if (isReadableByOthers(privateKeyPath)) {
+        throw Error(`Invalid permissions for private key file: ${privateKeyPath}`)
+    }
+
+    const keyPair = {
+        publicKey: fs.readFileSync(publicKeyPath, { encoding: 'utf-8' }),
+        privateKey: fs.readFileSync(privateKeyPath, { encoding: 'utf-8' }),
+    }
+    if (!isKeyPair(keyPair)) {
+        /* istanbul ignore next */
+        throw Error('Invalid keyPair')
+    }
+    testKeyPair(keyPair)
+    return keyPair
+}
+
+const testKeyPair = (keyPair: KeyPair) => {
+    const signature = getSignature({ test: 1 }, keyPair)
+    if (!verifySignature({ test: 1 } as JSONObject, signature, keyPair.publicKey)) {
+        /* istanbul ignore next */
+        throw new Error('Problem testing public/private keys. Error verifying signature.')
+    }
+    if (hexToPublicKey(publicKeyToHex(keyPair.publicKey)) !== keyPair.publicKey) {
+        /* istanbul ignore next */
+        throw new Error('Problem testing public/private keys. Error converting public key to/from hex.')
+    }
+    if (hexToPrivateKey(privateKeyToHex(keyPair.privateKey)) !== keyPair.privateKey) {
+        /* istanbul ignore next */
+        throw new Error('Problem testing public/private keys. Error converting private key to/from hex.')
     }
 }
 

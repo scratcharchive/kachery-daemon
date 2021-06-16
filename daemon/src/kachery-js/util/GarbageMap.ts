@@ -1,4 +1,4 @@
-import { DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, Timestamp } from '../kachery-js/types/kacheryTypes'
+import { DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, Timestamp } from '../types/kacheryTypes'
 
 export default class GarbageMap<Key extends String, Value> {
     #map = new Map<Key, {value: Value, timestamp: Timestamp}>()

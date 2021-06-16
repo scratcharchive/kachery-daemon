@@ -1,3 +1,4 @@
+import { isRegisteredTaskFunction, isRequestedTask, RegisteredTaskFunction, RequestedTask } from '../kachery-js/types/kacheryHubTypes';
 import { ByteCount, ChannelName, DaemonVersion, DurationMsec, ErrorMessage, FeedId, FeedName, FileKey, isArrayOf, isBoolean, isByteCount, isChannelName, isDaemonVersion, isDurationMsec, isErrorMessage, isFeedId, isFeedName, isFileKey, isJSONValue, isMessageCount, isNodeId, isNull, isNumber, isObjectOf, isOneOf, isSha1Hash, isSignedSubfeedMessage, isString, isSubfeedHash, isSubfeedMessage, isSubfeedWatches, isTaskFunctionId, isTaskId, isTaskKwargs, isTaskStatus, isUrlString, JSONValue, LocalFilePath, MessageCount, NodeId, optional, Sha1Hash, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, SubfeedWatches, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, UrlString, _validateObject } from '../kachery-js/types/kacheryTypes';
 import { isTaskFunctionType, TaskFunctionType } from '../kachery-js/types/pubsubMessages';
 
@@ -285,20 +286,6 @@ export const isFeedApiGetFeedIdResponse = (x: any): x is FeedApiGetFeedIdRespons
     });
 }
 
-export type RegisteredTaskFunction = {
-    channelName: string
-    taskFunctionId: TaskFunctionId
-    taskFunctionType: TaskFunctionType
-}
-
-export const isRegisteredTaskFunction = (x: any): x is RegisteredTaskFunction => {
-    return _validateObject(x, {
-        channelName: isChannelName,
-        taskFunctionId: isTaskFunctionId,
-        taskFunctionType: isTaskFunctionType
-    })
-}
-
 export interface TaskRegisterTaskFunctionsRequest {
     taskFunctions: RegisteredTaskFunction[]
     timeoutMsec: DurationMsec
@@ -307,24 +294,6 @@ export const isTaskRegisterTaskFunctionsRequest = (x: any): x is TaskRegisterTas
     return _validateObject(x, {
         taskFunctions: isArrayOf(isRegisteredTaskFunction),
         timeoutMsec: isDurationMsec
-    })
-}
-
-export type RequestedTask = {
-    channelName: ChannelName
-    taskId: TaskId
-    taskFunctionId: TaskFunctionId
-    kwargs: TaskKwargs
-    taskFunctionType: TaskFunctionType
-}
-
-const isRequestedTask = (x: any): x is RequestedTask => {
-    return _validateObject(x, {
-        channelName: isChannelName,
-        taskId: isTaskId,
-        taskFunctionId: isTaskFunctionId,
-        kwargs: isTaskKwargs,
-        taskFunctionType: isTaskFunctionType
     })
 }
 

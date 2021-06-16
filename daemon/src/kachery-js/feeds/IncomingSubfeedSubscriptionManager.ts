@@ -1,14 +1,10 @@
-import GarbageMap from "../common/GarbageMap";
-import { ChannelName, durationMsecToNumber, elapsedSince, FeedId, MessageCount, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../kachery-js/types/kacheryTypes";
-import KacheryDaemonNode from "../KacheryDaemonNode";
+import { ChannelName, durationMsecToNumber, elapsedSince, FeedId, nowTimestamp, scaledDurationMsec, SubfeedHash, zeroTimestamp } from "../types/kacheryTypes";
+import GarbageMap from "../util/GarbageMap";
 
 class IncomingSubfeedSubscriptionManager {
     #incomingSubscriptions = new GarbageMap<string, IncomingSubfeedSubscription>(scaledDurationMsec(300 * 60 * 1000))
     #subscriptionCodesBySubfeedCode = new GarbageMap<string, { [key: string]: boolean }>(scaledDurationMsec(300 * 60 * 1000))
     // #reportToChannelMessagesAddedCallbacks: ((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) => void)[]
-    constructor() {
-
-    }
     createOrRenewIncomingSubscription(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
         const subscriptionCode = makeSubscriptionCode(channelName, feedId, subfeedHash)
         const subfeedCode = makeSubfeedCode(feedId, subfeedHash)

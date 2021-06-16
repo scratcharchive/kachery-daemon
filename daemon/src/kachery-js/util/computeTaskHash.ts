@@ -1,4 +1,4 @@
-import { JSONObject, Sha1Hash, sha1OfObject, TaskFunctionId, TaskKwargs } from "./types/kacheryTypes";
+import { JSONObject, Sha1Hash, sha1OfObject, TaskFunctionId, TaskKwargs } from "../types/kacheryTypes";
 
 const computeTaskHash = (taskFunctionId: TaskFunctionId, kwargs: TaskKwargs): Sha1Hash => {
     const taskData = {

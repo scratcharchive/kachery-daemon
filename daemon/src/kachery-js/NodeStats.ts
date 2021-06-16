@@ -1,8 +1,8 @@
-import GarbageMap from "./common/GarbageMap";
-import { addByteCount, byteCount, ByteCount, ChannelName } from "./kachery-js/types/kacheryTypes";
+import GarbageMap from "./util/GarbageMap";
+import { addByteCount, byteCount, ByteCount, ChannelName } from "./types/kacheryTypes";
 
-type BytesSentMethod = 'multicastUdp' | 'udp' | 'http' | 'webSocket'
-type BytesReceivedMethod = 'multicastUdp' | 'udp' | 'http' | 'webSocket'
+// type BytesSentMethod = 'multicastUdp' | 'udp' | 'http' | 'webSocket'
+// type BytesReceivedMethod = 'multicastUdp' | 'udp' | 'http' | 'webSocket'
 
 export default class NodeStats {
     #bytesSent = byteCount(0)
@@ -13,8 +13,6 @@ export default class NodeStats {
     #messagesSentByChannel = new GarbageMap<ChannelName, number>(null)
     #messagesReceived: number = 0
     #messagesReceivedByChannel = new GarbageMap<ChannelName, number>(null)
-    constructor() {
-    }
     totalBytesSent() {
         return this.#bytesSent
     }
