@@ -1,13 +1,13 @@
 import axios from 'axios';
 import fs from 'fs';
+import ExternalInterface from 'kachery-js/ExternalInterface';
+import KacheryDaemonNode from 'kachery-js/KacheryDaemonNode';
+import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyHexToNodeId, publicKeyToHex, signMessageNew, verifySignature } from 'kachery-js/types/crypto_util';
+import { KacheryNodeRequest, KacheryNodeRequestBody } from 'kachery-js/types/kacheryNodeRequestTypes';
+import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, Signature, UserId } from 'kachery-js/types/kacheryTypes';
+import { KacheryHubPubsubMessageBody } from 'kachery-js/types/pubsubMessages';
 import { isReadableByOthers } from './external/real/LocalFeedManager';
 import MutableManager from './external/real/mutables/MutableManager';
-import ExternalInterface from './kachery-js/ExternalInterface';
-import KacheryDaemonNode from './kachery-js/KacheryDaemonNode';
-import { createKeyPair, getSignature, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyHexToNodeId, publicKeyToHex, signPubsubMessage, verifySignature } from './kachery-js/types/crypto_util';
-import { KacheryNodeRequest, KacheryNodeRequestBody } from './kachery-js/types/kacheryNodeRequestTypes';
-import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, Signature, UserId } from './kachery-js/types/kacheryTypes';
-import { KacheryHubPubsubMessageBody } from './kachery-js/types/pubsubMessages';
 import ClientAuthService from './services/ClientAuthService';
 import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
@@ -55,7 +55,7 @@ const startDaemon = async (args: {
 
 
     const storageDir = kacheryStorageManager.storageDir()
-    const keyPair = storageDir ? _loadKeypair(storageDir) : createKeyPair()
+    const keyPair = storageDir ? await _loadKeypair(storageDir) : createKeyPair()
     const nodeId = publicKeyHexToNodeId(publicKeyToHex(keyPair.publicKey)) // get the node id from the public key
 
     if (storageDir) {
@@ -68,13 +68,13 @@ const startDaemon = async (args: {
         const request: KacheryNodeRequest = {
             body: requestBody,
             nodeId,
-            signature: getSignature(requestBody, keyPair)
+            signature: await signMessageNew(requestBody as any as JSONValue, keyPair)
         }
         const x = await axios.post(`${opts.kacheryHubUrl}/api/kacheryNode`, request)
         return x.data
     }
     const signPubsubMessage2 = async (messageBody: KacheryHubPubsubMessageBody): Promise<Signature> => {
-        return await signPubsubMessage(messageBody as any as JSONValue, keyPair)
+        return await signMessageNew(messageBody as any as JSONValue, keyPair)
     }
 
     const kNode = new KacheryDaemonNode({
@@ -133,7 +133,7 @@ const startDaemon = async (args: {
     }
 }
 
-const _loadKeypair = (storageDir: LocalFilePath): KeyPair => {
+const _loadKeypair = async (storageDir: LocalFilePath): Promise<KeyPair> => {
     if (!fs.existsSync(storageDir.toString())) {
         /* istanbul ignore next */
         throw Error(`Storage directory does not exist: ${storageDir}`)
@@ -166,13 +166,13 @@ const _loadKeypair = (storageDir: LocalFilePath): KeyPair => {
         /* istanbul ignore next */
         throw Error('Invalid keyPair')
     }
-    testKeyPair(keyPair)
+    await testKeyPair(keyPair)
     return keyPair
 }
 
-const testKeyPair = (keyPair: KeyPair) => {
-    const signature = getSignature({ test: 1 }, keyPair)
-    if (!verifySignature({ test: 1 } as JSONObject, signature, keyPair.publicKey)) {
+const testKeyPair = async (keyPair: KeyPair) => {
+    const signature = await signMessageNew({ test: 1 }, keyPair)
+    if (!await verifySignature({ test: 1 } as JSONObject, signature, keyPair.publicKey)) {
         /* istanbul ignore next */
         throw new Error('Problem testing public/private keys. Error verifying signature.')
     }

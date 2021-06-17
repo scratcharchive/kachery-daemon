@@ -1,7 +1,7 @@
 import dgram from 'dgram';
-import { LocalFilePath } from '../../kachery-js/types/kacheryTypes';
+import { LocalFilePath } from 'kachery-js/types/kacheryTypes';
 import MutableManager from './mutables/MutableManager';
-import ExternalInterface, { LocalFeedManagerInterface, MutableManagerInterface } from '../../kachery-js/ExternalInterface';
+import ExternalInterface, { LocalFeedManagerInterface, MutableManagerInterface } from 'kachery-js/ExternalInterface';
 import { httpGetDownload, httpPostJson } from "./httpRequests";
 import { KacheryStorageManager } from './kacheryStorage/KacheryStorageManager';
 import LocalFeedManager from './LocalFeedManager';
@@ -17,7 +17,7 @@ const realExternalInterface = (storageDir: LocalFilePath): ExternalInterface => 
         return new KacheryStorageManager(storageDir)
     }
 
-    const createLocalFeedManager = (mutableManager: MutableManager): LocalFeedManagerInterface => {
+    const createLocalFeedManager = (mutableManager: MutableManagerInterface): LocalFeedManagerInterface => {
         return new LocalFeedManager(storageDir, mutableManager)
     }
 

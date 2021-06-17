@@ -64,7 +64,7 @@ export const sha1MatchesFileKey = ({ sha1, fileKey }: { sha1: Sha1Hash, fileKey:
 
 
 export const sleepMsec = async (msec: DurationMsec, continueFunction: (() => boolean) | undefined = undefined): Promise<void> => {
-    return await sleepMsecNum(msec as any as number)
+    return await sleepMsecNum(msec as any as number, continueFunction)
 }
 
 export const sleepMsecNum = async (msec: number, continueFunction: (() => boolean) | undefined = undefined): Promise<void> => {

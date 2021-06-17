@@ -1,11 +1,11 @@
-import { sleepMsec } from "../kachery-js/util/util";
 // import { scaledDurationMsec, _validateObject } from "../common/types/kacheryTypes";
-import { scaledDurationMsec, _validateObject } from "../kachery-js/types/kacheryTypes"
-import KacheryDaemonNode from "../kachery-js/KacheryDaemonNode";
+import { scaledDurationMsec, _validateObject } from "kachery-js/types/kacheryTypes"
+import { sleepMsec } from 'kachery-js/util/util'
+import KacheryDaemonNode from "kachery-js/KacheryDaemonNode";
 import child_process from 'child_process'
 import fs from 'fs'
 import { userInfo } from 'os'
-import randomAlphaString from "../kachery-js/util/randomAlphaString";
+import randomAlphaString from "kachery-js/util/randomAlphaString";
 
 export default class ClientAuthService {
     #node: KacheryDaemonNode

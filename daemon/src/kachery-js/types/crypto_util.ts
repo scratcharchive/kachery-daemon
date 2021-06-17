@@ -6,27 +6,37 @@ import * as ed from 'noble-ed25519'
 const ed25519PubKeyPrefix = "302a300506032b6570032100";
 const ed25519PrivateKeyPrefix = "302e020100300506032b657004220420";
 
-export const getSignature = (obj: Object, keyPair: KeyPair): Signature => {
-    try {
-        return crypto.sign(null, kacheryP2PSerialize(obj), keyPair.privateKey.toString()).toString('hex') as any as Signature;
-    }
-    catch(err) {
-        /* istanbul ignore next */
-        throw Error('Exception when creating signature.');
-    }
+export const getSignature = async (obj: Object, keyPair: KeyPair): Promise<Signature> => {
+    return signMessageNew(obj as any as JSONValue, keyPair)
+    // try {
+    //     return crypto.sign(null, kacheryP2PSerialize(obj), keyPair.privateKey.toString()).toString('hex') as any as Signature;
+    // }
+    // catch(err) {
+    //     /* istanbul ignore next */
+    //     throw Error('Exception when creating signature.');
+    // }
 }
 
-export const getSignatureJson = (obj: JSONObject, keyPair: KeyPair): Signature => {
-    try {
-        return crypto.sign(null, Buffer.from(JSONStringifyDeterministic(obj)), keyPair.privateKey.toString()).toString('hex') as any as Signature;
-    }
-    catch(err) {
-        /* istanbul ignore next */
-        throw Error('Exception when creating signature Json.');
-    }
+export const getSignatureJson = async (obj: JSONObject, keyPair: KeyPair): Promise<Signature> => {
+    return signMessageNew(obj as any as JSONValue, keyPair)
+    // try {
+    //     return crypto.sign(null, Buffer.from(JSONStringifyDeterministic(obj)), keyPair.privateKey.toString()).toString('hex') as any as Signature;
+    // }
+    // catch(err) {
+    //     /* istanbul ignore next */
+    //     throw Error('Exception when creating signature Json.');
+    // }
 }
 
-export const verifySignatureJson = (obj: JSONObject & {timestamp?: Timestamp}, signature: Signature, publicKey: PublicKey, opts: {checkTimestamp: boolean}={checkTimestamp: false}) => {
+export const verifySignatureJson = async (obj: JSONObject & {timestamp?: Timestamp}, signature: Signature, publicKey: PublicKey, opts: {checkTimestamp: boolean}={checkTimestamp: false}): Promise<boolean> => {
+    const ok = await verifyMessageNew(obj, publicKey, signature)
+    if (ok) return true
+    if (!crypto.verify) {
+        console.warn('Problem verifying signature, and unable to use crypto.verify')
+        return false
+    }
+    // Try to verify with old system
+
     /* istanbul ignore next */
     if (opts.checkTimestamp) {
         if (!obj.timestamp) {
@@ -40,7 +50,9 @@ export const verifySignatureJson = (obj: JSONObject & {timestamp?: Timestamp}, s
         }
     }
     try {
-        return crypto.verify(null, Buffer.from(JSONStringifyDeterministic(obj)), publicKey.toString(), Buffer.from(signature.toString(), 'hex'));
+        const verified = crypto.verify(null, Buffer.from(JSONStringifyDeterministic(obj)), publicKey.toString(), Buffer.from(signature.toString(), 'hex'));
+        // why does typescript think that verified is a buffer? it should be boolean!
+        return verified as any as boolean
     }
     catch(err) {
         /* istanbul ignore next */
@@ -48,7 +60,14 @@ export const verifySignatureJson = (obj: JSONObject & {timestamp?: Timestamp}, s
     }
 }
 
-export const verifySignature = (obj: Object & {timestamp?: Timestamp}, signature: Signature, publicKey: PublicKey, opts={checkTimestamp: false}): boolean => {
+export const verifySignature = async (obj: Object & {timestamp?: Timestamp}, signature: Signature, publicKey: PublicKey, opts={checkTimestamp: false}): Promise<boolean> => {
+    const ok = await verifyMessageNew(obj as any as JSONValue, publicKey, signature)
+    if (ok) return true
+    if (!crypto.verify) {
+        console.warn('Problem verifying signature, and unable to use crypto.verify (in verifySignature)')
+        return false
+    }
+
     /* istanbul ignore next */
     if (opts.checkTimestamp) {
         if (!obj.timestamp) {
@@ -169,7 +188,7 @@ export const createKeyPair = () => {
 //     return JSON.stringify( obj, allKeys, space );
 // }
 
-export const signPubsubMessage = async (messageBody: JSONValue, keyPair: KeyPair): Promise<Signature> => {
+export const signMessageNew = async (messageBody: JSONValue, keyPair: KeyPair): Promise<Signature> => {
     const messageHash = sha1OfString(JSONStringifyDeterministic(messageBody))
     const messageHashBuffer = Buffer.from(messageHash.toString(), 'hex')
     const privateKeyHex = privateKeyToHex(keyPair.privateKey)
@@ -177,12 +196,12 @@ export const signPubsubMessage = async (messageBody: JSONValue, keyPair: KeyPair
     const signature = await ed.sign(messageHashBuffer, privateKeyBuffer)
     const signatureHex = Buffer.from(signature).toString('hex')
     if (!isSignature(signatureHex)) throw Error('Problem signing message')
-    const okay = await verifyPubsubMessage(messageBody, keyPair.publicKey, signatureHex)
-    if (!okay) throw Error('Problem verifying pubsub message signature')
+    const okay = await verifyMessageNew(messageBody, keyPair.publicKey, signatureHex)
+    if (!okay) throw Error('Problem verifying message signature in signMessageNew')
     return signatureHex
 }
 
-export const verifyPubsubMessage = async (messageBody: JSONValue, publicKey: PublicKey, signature: Signature): Promise<boolean> => {
+export const verifyMessageNew = async (messageBody: JSONValue, publicKey: PublicKey, signature: Signature): Promise<boolean> => {
     const messageHash = sha1OfString(JSONStringifyDeterministic(messageBody))
     const messageHashBuffer = Buffer.from(messageHash.toString(), 'hex')
     const publicKeyHex = publicKeyToHex(publicKey)

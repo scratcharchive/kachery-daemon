@@ -1,7 +1,7 @@
-import { NodeChannelMembership } from "../kachery-js/types/kacheryHubTypes";
-import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "../kachery-js/types/kacheryTypes";
-import { formatByteCount, sleepMsec } from "../kachery-js/util/util";
-import KacheryDaemonNode from "../kachery-js/KacheryDaemonNode";
+import { NodeChannelMembership } from "kachery-js/types/kacheryHubTypes";
+import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "kachery-js/types/kacheryTypes";
+import { formatByteCount, sleepMsec } from "kachery-js/util/util";
+import KacheryDaemonNode from "kachery-js/KacheryDaemonNode";
 
 export default class DisplayStateService {
     #node: KacheryDaemonNode

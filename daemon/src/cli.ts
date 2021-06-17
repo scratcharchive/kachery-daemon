@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
+import { Address, ChannelLabel, isAddress, isArrayOf, isBoolean, isChannelLabel, isNodeId, isNodeLabel, isPort, isString, isUserId, localFilePath, NodeId, NodeLabel, nodeLabel, optional, UserId, _validateObject } from 'kachery-js/types/kacheryTypes';
 import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
-import { Address, ChannelLabel, HostName, isAddress, isArrayOf, isBoolean, isChannelLabel, isHostName, isNodeId, isNodeLabel, isPort, isString, isUrlString, isUserId, LocalFilePath, localFilePath, NodeId, NodeLabel, nodeLabel, optional, toPort, UserId, _validateObject } from './kachery-js/types/kacheryTypes';
 import startDaemon from './startDaemon';
 
 // Thanks: https://stackoverflow.com/questions/4213351/make-node-js-not-exit-on-error

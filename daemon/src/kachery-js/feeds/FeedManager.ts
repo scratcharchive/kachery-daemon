@@ -227,7 +227,7 @@ class FeedManager {
             const privateKey = await this.localFeedManager.getPrivateKeyForFeed(feedId)
 
             try {
-                await subfeed.initialize(privateKey)
+                await subfeed.initialize(privateKey, {verifySignatures: this.opts.verifySignatures})
             }
             catch(err) {
                 /* istanbul ignore next */

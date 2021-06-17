@@ -918,8 +918,6 @@ export const channelConfigUrl = (x: string): ChannelConfigUrl => {
     return x
 }
 
-export const sleepMsec = (m: number) => new Promise(r => setTimeout(r, m));
-
 export const pathifyHash = (x: Sha1Hash | FeedId | SubfeedHash) => {
     return `${x[0]}${x[1]}/${x[2]}${x[3]}/${x[4]}${x[5]}/${x}`
 }

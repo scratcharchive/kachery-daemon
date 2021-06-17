@@ -1,8 +1,9 @@
-import GarbageMap from "../util/GarbageMap";
-import randomAlphaString from "../util/randomAlphaString";
 import { RegisteredTaskFunction, RequestedTask } from "../types/kacheryHubTypes";
 import { ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, nowTimestamp, TaskFunctionId, TaskId, TaskKwargs, Timestamp } from "../types/kacheryTypes";
 import { TaskFunctionType } from "../types/pubsubMessages";
+import computeTaskHash from "../util/computeTaskHash";
+import GarbageMap from "../util/GarbageMap";
+import randomAlphaString from "../util/randomAlphaString";
 
 type RegisteredTaskFunctionGroup = {
     taskFunctions: RegisteredTaskFunction[]
@@ -49,10 +50,12 @@ export default class IncomingTaskManager {
     }
     requestTask(args: {channelName: ChannelName, taskId: TaskId, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, taskFunctionType: TaskFunctionType}) {
         const {channelName, taskId, taskFunctionId, taskKwargs, taskFunctionType} = args
+        const taskHash = computeTaskHash(taskFunctionId, taskKwargs)
         this.#pendingTaskRequests.push({
             requestedTask: {
                 channelName,
                 taskId,
+                taskHash,
                 taskFunctionId,
                 kwargs: taskKwargs,
                 taskFunctionType

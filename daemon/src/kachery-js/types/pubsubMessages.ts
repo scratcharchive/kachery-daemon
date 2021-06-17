@@ -1,4 +1,4 @@
-import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isJSONValue, isMessageCount, isNodeId, isOneOf, isSignature, isString, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskId, isTaskKwargs, isTaskStatus, JSONValue, MessageCount, NodeId, optional, Signature, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, _validateObject } from "./kacheryTypes";
+import { ErrorMessage, FeedId, FileKey, isEqualTo, isErrorMessage, isFeedId, isFileKey, isMessageCount, isNodeId, isOneOf, isSignature, isString, isSubfeedHash, isSubfeedPosition, isTaskFunctionId, isTaskId, isTaskKwargs, isTaskStatus, MessageCount, NodeId, optional, Signature, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, _validateObject } from "./kacheryTypes";
 
 export type RequestFileMessageBody = {
     type: 'requestFile',
@@ -63,7 +63,6 @@ export type UpdateTaskStatusMessageBody = {
     taskId: TaskId,
     status: TaskStatus,
     errorMessage?: ErrorMessage
-    queryResult?: JSONValue
 }
 
 export const isUpdateTaskStatusMessageBody = (x: any): x is UpdateTaskStatusMessageBody => {
@@ -71,8 +70,7 @@ export const isUpdateTaskStatusMessageBody = (x: any): x is UpdateTaskStatusMess
         type: isEqualTo('updateTaskStatus'),
         taskId: isTaskId,
         status: isTaskStatus,
-        errorMessage: optional(isErrorMessage),
-        queryResult: optional(isJSONValue)
+        errorMessage: optional(isErrorMessage)
     })
 }
 

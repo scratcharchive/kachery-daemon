@@ -8,7 +8,7 @@ class LocalSubfeedSignedMessagesManager {
     constructor(private localFeedManager: LocalFeedManagerInterface, private feedId: FeedId, private subfeedHash: SubfeedHash, private publicKey: PublicKey) {
 
     }
-    async initializeFromLocal() {
+    async initializeFromLocal(opts: {verifySignatures: boolean}) {
         const messages = await this.localFeedManager.getSignedSubfeedMessages(this.feedId, this.subfeedHash)
 
         // Verify the integrity of the messages
@@ -16,13 +16,15 @@ class LocalSubfeedSignedMessagesManager {
         let previousSignature: Signature | null = null
         let previousMessageNumber: number = -1
         for (let msg of messages) {
-            if (!verifySignatureJson(msg.body as any as JSONObject, msg.signature, this.publicKey)) {
-                /* istanbul ignore next */
-                throw Error(`Unable to verify signature of message in feed: ${msg.signature}`)
-            }
-            if (previousSignature !== (msg.body.previousSignature || null)) {
-                /* istanbul ignore next */
-                throw Error(`Inconsistent previousSignature of message in feed when reading messages from file: ${previousSignature} ${msg.body.previousSignature}`)
+            if (opts.verifySignatures) {
+                if (!await verifySignatureJson(msg.body as any as JSONObject, msg.signature, this.publicKey)) {
+                    /* istanbul ignore next */
+                    throw Error(`Unable to verify signature of message in feed: ${msg.signature}`)
+                }
+                if (previousSignature !== (msg.body.previousSignature || null)) {
+                    /* istanbul ignore next */
+                    throw Error(`Inconsistent previousSignature of message in feed when reading messages from file: ${previousSignature} ${msg.body.previousSignature}`)
+                }
             }
             if (previousMessageNumber + 1 !== msg.body.messageNumber) {
                 /* istanbul ignore next */

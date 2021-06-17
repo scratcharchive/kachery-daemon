@@ -1,6 +1,6 @@
+import { ChannelName, ErrorMessage, TaskId, TaskStatus } from "../types/kacheryTypes";
 import GarbageMap from "../util/GarbageMap";
 import randomAlphaString from "../util/randomAlphaString";
-import { ChannelName, ErrorMessage, JSONValue, TaskId, TaskStatus } from "../types/kacheryTypes";
 
 // type ListenerCallback = (status: TaskStatus, errMsg: ErrorMessage | undefined) => void
 
@@ -16,7 +16,6 @@ type OutgoingTask = {
     taskId: TaskId
     status: TaskStatus
     errorMessage?: ErrorMessage
-    queryResult?: JSONValue
     listenForStatusUpdates: (callback: () => void) => {cancelListener: () => void}
     _callbacks: {[key: string]: () => void}
 }
@@ -50,15 +49,14 @@ export default class OutgoingTaskManager {
         const code = createTaskCode(channelName, taskId)
         return this.#outgoingTasksByCode.get(code)
     }
-    updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errMsg: ErrorMessage | undefined, queryResult: JSONValue | undefined}) {
-        const {channelName, taskId, status, errMsg, queryResult} = args
+    updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errMsg: ErrorMessage | undefined}) {
+        const {channelName, taskId, status, errMsg} = args
         const code = createTaskCode(channelName, taskId)
         const a = this.#outgoingTasksByCode.get(code)
         if (!a) return
         if (a.status !== status) {
             a.status = status
             a.errorMessage = errMsg
-            a.queryResult = queryResult
             for (let k in a._callbacks) {
                 a._callbacks[k]()
             }

@@ -6,8 +6,9 @@ import IncomingTaskManager from "./tasks/IncomingTaskManager";
 import OutgoingTaskManager from "./tasks/outgoingTaskManager";
 import { NodeConfig, RegisteredTaskFunction, RequestedTask } from "./types/kacheryHubTypes";
 import { KacheryNodeRequestBody } from "./types/kacheryNodeRequestTypes";
-import { ByteCount, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSha1Hash, isSignedSubfeedMessage, JSONValue, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "./types/kacheryTypes";
+import { ByteCount, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "./types/kacheryTypes";
 import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, RequestFileMessageBody, RequestSubfeedMessageBody, RequestTaskMessageBody, TaskFunctionType, UpdateSubfeedMessageCountMessageBody, UpdateTaskStatusMessageBody, UploadFileStatusMessageBody } from "./types/pubsubMessages";
+import cacheBust from "./util/cacheBust";
 import computeTaskHash from "./util/computeTaskHash";
 import randomAlphaString from "./util/randomAlphaString";
 import urlFromUri from "./util/urlFromUri";
@@ -18,14 +19,11 @@ type RequestTaskResult = {
     taskId: TaskId
     status: TaskStatus
     taskResultUrl?: UrlString
-    queryResult?: JSONValue
     errorMessage?: ErrorMessage
 }
 
 type WaitForTaskResult = {
     status: TaskStatus
-    taskResultUrl?: UrlString
-    queryResult?: JSONValue
     errorMessage?: ErrorMessage
 }
 
@@ -332,8 +330,8 @@ class KacheryHubInterface {
         }
         return subfeedJson
     }
-    async updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errorMessage: ErrorMessage | undefined, queryResult: JSONValue | undefined}) {
-        const { channelName, taskId, status, errorMessage, queryResult } = args
+    async updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errorMessage: ErrorMessage | undefined}) {
+        const { channelName, taskId, status, errorMessage } = args
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) {
@@ -359,32 +357,38 @@ class KacheryHubInterface {
             type: 'updateTaskStatus',
             taskId,
             status,
-            errorMessage,
-            queryResult
+            errorMessage
         }
         this._publishMessageToPubsubChannel(channelName, pcn, msg)
     }
     async registerTaskFunctions(args: {taskFunctions: RegisteredTaskFunction[], timeoutMsec: DurationMsec}): Promise<RequestedTask[]> {
         return this.#incomingTaskManager.registerTaskFunctions(args)
     }
-    async requestTaskFromChannel(args: {channelName: ChannelName, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, taskFunctionType: TaskFunctionType, timeoutMsec: DurationMsec}): Promise<RequestTaskResult> {
+    async requestTaskFromChannel(args: {channelName: ChannelName, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, taskFunctionType: TaskFunctionType, timeoutMsec: DurationMsec, queryUseCache?: boolean}): Promise<RequestTaskResult> {
         await this.initialize()
 
-        const { channelName, taskFunctionId, taskKwargs, taskFunctionType, timeoutMsec } = args
+        const { channelName, taskFunctionId, taskKwargs, taskFunctionType, timeoutMsec, queryUseCache } = args
+        const taskHash = computeTaskHash(taskFunctionId, taskKwargs)
         let taskId: TaskId
         if (taskFunctionType === 'pure-calculation') {
-            taskId = toTaskId(computeTaskHash(taskFunctionId, taskKwargs))
+            taskId = toTaskId(taskHash)
         }
         else {
             taskId = toTaskId(randomAlphaString(10))
         }
-        if (taskFunctionType === 'pure-calculation') {
+        if ((taskFunctionType === 'pure-calculation') || ((taskFunctionType === 'query') && (queryUseCache))) {
             const channelBucketUri = await this.getChannelBucketUri(channelName)
             const channelBucketUrl = urlFromUri(channelBucketUri)
-            if (!isSha1Hash(taskId)) throw Error('Task ID for pure function is not sha1 hash')
-            const url = urlString(`${channelBucketUrl}/task_results/${pathifyHash(taskId)}`)
+            if (taskFunctionType === 'pure-calculation') {
+                if (taskId.toString() !== taskHash.toString()) throw Error('Task ID for pure function is not equal to task hash')
+            }
+            const url = urlString(`${channelBucketUrl}/task_results/${pathifyHash(taskHash)}`)
             const exists = await checkUrlExists(url)
             if (exists) {
+                if (taskFunctionType === 'query') {
+                    // even though we are using the cached query result, we care still going to request the query... that way the updated result will be available for next time
+                    this._requestTaskFromChannel({channelName, taskFunctionId, kwargs: taskKwargs, taskFunctionType, taskId})
+                }
                 return {
                     taskId,
                     status: 'finished',
@@ -393,30 +397,28 @@ class KacheryHubInterface {
             }
         }
 
-        this.#outgoingTaskManager.createOutgoingTask(channelName, taskId)
-        this._requestTaskFromChannel({channelName, taskFunctionId, kwargs: taskKwargs, taskFunctionType, taskId})
-        const x = await this.waitForTaskResult({channelName, taskId, timeoutMsec, taskFunctionType})
-        return {
-            taskId,
-            status: x.status,
-            taskResultUrl: x.taskResultUrl,
-            queryResult: x.queryResult,
-            errorMessage: x.errorMessage
-        }
-    }
-    async waitForTaskResult(args: {channelName: ChannelName, taskId: TaskId, timeoutMsec: DurationMsec, taskFunctionType: TaskFunctionType}): Promise<WaitForTaskResult> {
-        const { channelName, taskId, timeoutMsec, taskFunctionType } = args
-
         let taskResultUrl: UrlString | undefined
-        if (taskFunctionType === 'pure-calculation') {
+        if ((taskFunctionType === 'pure-calculation') || (taskFunctionType === 'query')) {
             const channelBucketUri = await this.getChannelBucketUri(channelName)
             const channelBucketUrl = urlFromUri(channelBucketUri)
-            if (!isSha1Hash(taskId)) throw Error('Unexpected: task ID for pure calculation is not a sha1 hash')
-            taskResultUrl = urlString(`${channelBucketUrl}/task_results/${pathifyHash(taskId)}`)
+            taskResultUrl = urlString(`${channelBucketUrl}/task_results/${pathifyHash(taskHash)}`)
         }
         else {
             taskResultUrl = undefined
         }
+
+        this.#outgoingTaskManager.createOutgoingTask(channelName, taskId)
+        this._requestTaskFromChannel({channelName, taskFunctionId, kwargs: taskKwargs, taskFunctionType, taskId})
+        const x = await this.waitForTaskResult({channelName, taskId, taskResultUrl, timeoutMsec, taskFunctionType})
+        return {
+            taskId,
+            status: x.status,
+            taskResultUrl: taskResultUrl,
+            errorMessage: x.errorMessage
+        }
+    }
+    async waitForTaskResult(args: {channelName: ChannelName, taskId: TaskId, taskResultUrl: UrlString | undefined, timeoutMsec: DurationMsec, taskFunctionType: TaskFunctionType}): Promise<WaitForTaskResult> {
+        const { channelName, taskId, taskResultUrl, timeoutMsec, taskFunctionType } = args
 
         const t = this.#outgoingTaskManager.outgoingTask(channelName, taskId)
         if (!t) return {
@@ -444,13 +446,13 @@ class KacheryHubInterface {
                     })
                 }
                 else if (t.status === 'finished') {
-                    if (taskFunctionType === 'pure-calculation') {
+                    if ((taskFunctionType === 'pure-calculation') || (taskFunctionType === 'query')) {
                         if (taskResultUrl === undefined) throw Error('Unexpected, taskResultUrl is undefined')
-                        checkUrlExists(taskResultUrl).then(exists => {
+                        const url0 = taskFunctionType === 'pure-calculation' ? taskResultUrl : cacheBust(taskResultUrl)
+                        checkUrlExists(url0).then(exists => {
                             if (exists) {
                                 _return({
-                                    status: 'finished',
-                                    taskResultUrl
+                                    status: 'finished'
                                 })
                             }
                             else {
@@ -465,20 +467,6 @@ class KacheryHubInterface {
                                 errorMessage: errorMessage('Task finished, but problem checking whether result exists in bucket.')
                             })
                         })
-                    }
-                    else if (taskFunctionType === 'query') {
-                        if (t.queryResult !== undefined) {
-                            _return({
-                                status: 'finished',
-                                queryResult: t.queryResult
-                            })
-                        }
-                        else {
-                            _return({
-                                status: 'error',
-                                errorMessage: errorMessage('Task finished, but query result not found.')
-                            })
-                        }
                     }
                     else if (taskFunctionType === 'action') {
                         _return({
@@ -567,7 +555,7 @@ class KacheryHubInterface {
                 console.warn(`Unexpected pubsub channel for updateTaskStatus: ${x.pubsubChannelName}`)
                 return
             }
-            this.#outgoingTaskManager.updateTaskStatus({channelName: x.channelName, taskId: msg.taskId, status: msg.status, errMsg: msg.errorMessage, queryResult: msg.queryResult})
+            this.#outgoingTaskManager.updateTaskStatus({channelName: x.channelName, taskId: msg.taskId, status: msg.status, errMsg: msg.errorMessage})
         }
         else if (msg.type === 'requestTask') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-requestTasks`)) {

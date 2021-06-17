@@ -1,9 +1,9 @@
 import fs from 'fs';
-import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from '../../kachery-js/types/crypto_util';
-import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, SubfeedHash, _validateObject } from '../../kachery-js/types/kacheryTypes';
-import GarbageMap from '../../kachery-js/util/GarbageMap';
+import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from 'kachery-js/types/crypto_util';
+import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, subfeedHash, SubfeedHash, _validateObject } from 'kachery-js/types/kacheryTypes';
+import GarbageMap from 'kachery-js/util/GarbageMap';
 import LocalFeedsDatabase from './LocalFeedsDatabase';
-import { MutableManagerInterface } from '../../kachery-js/ExternalInterface';
+import { MutableManagerInterface } from 'kachery-js/ExternalInterface';
 
 interface FeedConfig {
     feedId: FeedId,
@@ -242,7 +242,7 @@ export default class LocalFeedManager {
 
         const feedId = await this.#feedsConfigManager.getFeedIdForName(feedName)
         if (feedId) {
-            const existsLocally = await this.feedExistsLocally(feedId)
+            const existsLocally = this.#localFeedsDatabase.hasFeed(feedId)
             if (!existsLocally) return null
         }
         return feedId
@@ -253,14 +253,14 @@ export default class LocalFeedManager {
         const privateKey = await this.getPrivateKeyForFeed(feedId)
         if (!privateKey) return false
         // Returns true if we have the writeable feed
-        return await this.feedExistsLocally(feedId)
+        return await this.#localFeedsDatabase.hasFeed(feedId)
     }
     async getPrivateKeyForFeed(feedId: FeedId): Promise<PrivateKey | null> {
         // Consult the config to get the private key associated with a particular feed ID
         const c = await this.#feedsConfigManager.getFeedConfig(feedId)
         return c ? hexToPrivateKey(c.privateKey) : null
     }
-    async feedExistsLocally(feedId: FeedId): Promise<boolean> {
+    async subfeedExistsLocally(feedId: FeedId, subfeedHash: SubfeedHash): Promise<boolean> {
         return await this.#localFeedsDatabase.hasFeed(feedId)
     }
     async getSignedSubfeedMessages(feedId: FeedId, subfeedHash: SubfeedHash): Promise<SignedSubfeedMessage[]> {

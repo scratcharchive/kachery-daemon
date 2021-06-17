@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
-import { WebSocketInterface, WebSocketServerInterface } from '../../kachery-js/ExternalInterface';
-import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from '../../kachery-js/types/kacheryTypes';
+import { WebSocketInterface, WebSocketServerInterface } from 'kachery-js/ExternalInterface';
+import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from 'kachery-js/types/kacheryTypes';
 
 const webSocketInterfaceFromWebSocket = (ws: WebSocket): WebSocketInterface => {
     const onMessage = (cb: (buf: Buffer) => void) => {

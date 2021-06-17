@@ -1,4 +1,4 @@
-import { ChannelName, isArrayOf, isBoolean, isChannelName, isEqualTo, isNodeId, isNodeLabel, isNumber, isOneOf, isSignature, isString, isTaskFunctionId, isTaskId, isTaskKwargs, isTimestamp, isUserId, NodeId, NodeLabel, optional, Signature, TaskFunctionId, TaskId, TaskKwargs, Timestamp, UserId, _validateObject } from "./kacheryTypes"
+import { ChannelName, isArrayOf, isBoolean, isChannelName, isEqualTo, isNodeId, isNodeLabel, isNumber, isOneOf, isSha1Hash, isSignature, isString, isTaskFunctionId, isTaskId, isTaskKwargs, isTimestamp, isUserId, NodeId, NodeLabel, optional, Sha1Hash, Signature, TaskFunctionId, TaskId, TaskKwargs, Timestamp, UserId, _validateObject } from "./kacheryTypes"
 import { isTaskFunctionType, TaskFunctionType } from "./pubsubMessages"
 
 export type GoogleServiceAccountCredentials = {
@@ -524,6 +524,7 @@ export const isRegisteredTaskFunction = (x: any): x is RegisteredTaskFunction =>
 export type RequestedTask = {
     channelName: ChannelName
     taskId: TaskId
+    taskHash: Sha1Hash
     taskFunctionId: TaskFunctionId
     kwargs: TaskKwargs
     taskFunctionType: TaskFunctionType
@@ -533,6 +534,7 @@ export const isRequestedTask = (x: any): x is RequestedTask => {
     return _validateObject(x, {
         channelName: isChannelName,
         taskId: isTaskId,
+        taskHash: isSha1Hash,
         taskFunctionId: isTaskFunctionId,
         kwargs: isTaskKwargs,
         taskFunctionType: isTaskFunctionType

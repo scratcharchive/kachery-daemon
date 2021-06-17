@@ -1,6 +1,6 @@
 import axios from "axios"
 import NodeStats from "./NodeStats"
-import { ChannelName, JSONValue } from "./types/kacheryTypes"
+import { ChannelName, JSONValue, urlString } from "./types/kacheryTypes"
 import cacheBust from "./util/cacheBust"
 
 export type GoogleObjectStorageClientOpts = {
@@ -11,13 +11,13 @@ class GoogleObjectStorageClient {
     constructor(private opts: GoogleObjectStorageClientOpts) {
     }
     async getObjectData(name: string, opts: {cacheBust?: boolean, nodeStats: NodeStats, channelName: ChannelName | null}): Promise<ArrayBuffer | null> {
-        let url = `https://storage.googleapis.com/${this.opts.bucketName}/${name}`
+        let url = urlString(`https://storage.googleapis.com/${this.opts.bucketName}/${name}`)
         if (opts.cacheBust) {
             url = cacheBust(url)
         }
         let resp = null
         try {
-            resp = await axios.get(url, {responseType: 'arraybuffer'})
+            resp = await axios.get(url.toString(), {responseType: 'arraybuffer'})
         }
         catch(err) {
             return null

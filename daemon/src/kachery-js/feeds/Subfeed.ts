@@ -1,11 +1,11 @@
 import { Mutex } from 'async-mutex';
-import { feedIdToPublicKeyHex, getSignatureJson, hexToPublicKey, verifySignatureJson } from '../types/crypto_util';
+import { LocalFeedManagerInterface } from '../ExternalInterface';
+import KacheryHubInterface from '../KacheryHubInterface';
+import { feedIdToPublicKeyHex, hexToPublicKey, signMessageNew, verifySignatureJson } from '../types/crypto_util';
 import { ChannelName, DurationMsec, durationMsecToNumber, FeedId, JSONObject, messageCount, MessageCount, messageCountToNumber, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../types/kacheryTypes';
 import randomAlphaString from '../util/randomAlphaString';
-import KacheryHubInterface from '../KacheryHubInterface';
 import LocalSubfeedSignedMessagesManager from './LocalSubfeedSignedMessagesManager';
 import RemoteSubfeedMessageDownloader from './RemoteSubfeedMessageDownloader';
-import { LocalFeedManagerInterface } from '../ExternalInterface';
 // import NewOutgoingSubfeedSubscriptionManager from './NewOutgoingSubfeedSubscriptionManager';
 
 class Subfeed {
@@ -40,7 +40,7 @@ class Subfeed {
     async acquireLock() {
         return await this.#mutex.acquire()
     }
-    async initialize(privateKey: PrivateKey | null) {
+    async initialize(privateKey: PrivateKey | null, opts: {verifySignatures: boolean}) {
         this.#privateKey = privateKey
         if (this.#initialized) return
         if (this.#initializing) {
@@ -49,19 +49,17 @@ class Subfeed {
         }
         try {
             this.#initializing = true
+            this.#isWriteable = await this.localFeedManager.hasWriteableFeed(this.feedId)
             // Check whether we have the feed locally (may or may not be locally writeable)
-            const existsLocally = await this.localFeedManager.feedExistsLocally(this.feedId)
+            const existsLocally = await this.localFeedManager.subfeedExistsLocally(this.feedId, this.subfeedHash)
             if (existsLocally) {
-                this.#isWriteable = true
-                await this.#localSubfeedSignedMessagesManager.initializeFromLocal()
+                await this.#localSubfeedSignedMessagesManager.initializeFromLocal({verifySignatures: opts.verifySignatures})
             }
             else {
-                this.#isWriteable = false
-
                 // Otherwise, we don't have it locally -- so let's just initialize things
                 this.#localSubfeedSignedMessagesManager.initializeEmptyMessageList()
-                const messages = await this.localFeedManager.getSignedSubfeedMessages(this.feedId, this.subfeedHash)
-                if (messages.length !== 0) throw Error('Unexpected, messages.length is not zero')
+                // const messages = await this.localFeedManager.getSignedSubfeedMessages(this.feedId, this.subfeedHash)
+                // if (messages.length !== 0) throw Error('Unexpected, messages.length is not zero')
 
                 // don't do this
                 // // Let's try to load messages from remote nodes on the network
@@ -197,10 +195,10 @@ class Subfeed {
             }
             const signedMessage: SignedSubfeedMessage = {
                 body,
-                signature: getSignatureJson(body as any as JSONObject, {publicKey: this.#publicKey, privateKey: this.#privateKey})
+                signature: await signMessageNew(body as any as JSONObject, {publicKey: this.#publicKey, privateKey: this.#privateKey})
             }
             if (opts.verifySignatures) {
-                if (!verifySignatureJson(body as any as JSONObject, getSignatureJson(body as any as JSONObject, {publicKey: this.#publicKey, privateKey: this.#privateKey}), this.#publicKey)) {
+                if (!await verifySignatureJson(body as any as JSONObject, await signMessageNew(body as any as JSONObject, {publicKey: this.#publicKey, privateKey: this.#privateKey}), this.#publicKey)) {
                     throw Error('Error verifying signature')
                 }
             }
@@ -234,7 +232,7 @@ class Subfeed {
             const body = signedMessage.body;
             const signature = signedMessage.signature;
             if (opts.verifySignatures) {
-                if (!verifySignatureJson(body as any as JSONObject, signature, this.#publicKey)) {
+                if (!await verifySignatureJson(body as any as JSONObject, signature, this.#publicKey)) {
                     console.warn(JSON.stringify(signedMessage, null, 4))
                     throw Error(`Error verifying signature when appending signed message for: ${this.feedId} ${this.subfeedHash} ${signature}`);
                 }

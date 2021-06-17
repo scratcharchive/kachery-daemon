@@ -1,5 +1,5 @@
 import Ably from 'ably'
-import { nodeIdToPublicKey, verifyPubsubMessage } from "../types/crypto_util"
+import { nodeIdToPublicKey, verifyMessageNew } from "../types/crypto_util"
 import { isPubsubAuth, PubsubAuth } from "../types/kacheryHubTypes"
 import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, GetChannelConfigRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isCreateSignedTaskResultUploadUrlResponse, isGetChannelConfigResponse, isGetNodeConfigResponse, KacheryNodeRequestBody, ReportRequestBody } from "../types/kacheryNodeRequestTypes"
 import { ByteCount, ChannelName, FeedId, JSONValue, NodeId, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, TaskId, UserId } from "../types/kacheryTypes"
@@ -158,7 +158,7 @@ class KacheryHubClient {
             client.getChannel(pubsubChannelName).subscribe((msg: PubsubMessage) => {
                 const messageData = msg.data
                 if (isKacheryHubPubsubMessageData(messageData)) {
-                    verifyPubsubMessage(messageData.body as any as JSONValue, nodeIdToPublicKey(messageData.fromNodeId), messageData.signature).then(verified => {
+                    verifyMessageNew(messageData.body as any as JSONValue, nodeIdToPublicKey(messageData.fromNodeId), messageData.signature).then(verified => {
                         if (!verified) {
                             console.warn(messageData)
                             console.warn(`Problem verifying signature on pubsub message: channel=${channelName} pubsubChannelName=${pubsubChannelName}`, messageData.fromNodeId)

@@ -69,7 +69,7 @@ def start_daemon(*, label: str, owner: str, method: str, verbose: int, node_arg:
         export KACHERY_DAEMON_HOST="{daemon_host}"
         cd {thisdir}/../daemon
         # exec node_modules/ts-node/dist/bin.js {' '.join(node_arg)} ./src/cli.ts start {' '.join(start_args)}
-        exec node {' '.join(node_arg)} -r ts-node/register ./src/cli.ts start {' '.join(start_args)}
+        exec node {' '.join(node_arg)} -r ts-node/register -r tsconfig-paths/register ./src/cli.ts start {' '.join(start_args)}
         ''')
         ss.start()
         try:
