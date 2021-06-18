@@ -1,9 +1,9 @@
 import fs from 'fs';
-import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyHexToFeedId, publicKeyToHex } from 'kachery-js/types/crypto_util';
-import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, scaledDurationMsec, SignedSubfeedMessage, subfeedHash, SubfeedHash, _validateObject } from 'kachery-js/types/kacheryTypes';
+import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, publicKeyHexToFeedId, scaledDurationMsec, SignedSubfeedMessage, subfeedHash, SubfeedHash, _validateObject } from 'kachery-js/types/kacheryTypes';
 import GarbageMap from 'kachery-js/util/GarbageMap';
 import LocalFeedsDatabase from './LocalFeedsDatabase';
-import { MutableManagerInterface } from 'kachery-js/ExternalInterface';
+import { MutableManagerInterface } from 'kachery-js/core/ExternalInterface';
+import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyToHex } from 'kachery-js/crypto/signatures';
 
 interface FeedConfig {
     feedId: FeedId,
@@ -219,7 +219,7 @@ export default class LocalFeedManager {
         // Create a new writeable feed on this node and return the ID of the new feed
 
         // Generate the crypto keypair. The publicKey determines the new feed ID
-        const {publicKey, privateKey} = createKeyPair();
+        const {publicKey, privateKey} = await createKeyPair();
         const feedId = publicKeyHexToFeedId(publicKeyToHex(publicKey));
 
         await this.#feedsConfigManager.addFeed(feedId, privateKeyToHex(privateKey))

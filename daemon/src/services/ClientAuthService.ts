@@ -1,17 +1,17 @@
 // import { scaledDurationMsec, _validateObject } from "../common/types/kacheryTypes";
 import { scaledDurationMsec, _validateObject } from "kachery-js/types/kacheryTypes"
 import { sleepMsec } from 'kachery-js/util/util'
-import KacheryDaemonNode from "kachery-js/KacheryDaemonNode";
+import { KacheryNode } from 'kachery-js';
 import child_process from 'child_process'
 import fs from 'fs'
 import { userInfo } from 'os'
 import randomAlphaString from "kachery-js/util/randomAlphaString";
 
 export default class ClientAuthService {
-    #node: KacheryDaemonNode
+    #node: KacheryNode
     #halted = false
     #currentClientAuthCode = createClientAuthCode()
-    constructor(node: KacheryDaemonNode, private opts: {clientAuthGroup: string | null}) {
+    constructor(node: KacheryNode, private opts: {clientAuthGroup: string | null}) {
         this.#node = node
 
         this._start()

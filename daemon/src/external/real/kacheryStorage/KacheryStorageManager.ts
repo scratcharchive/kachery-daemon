@@ -7,7 +7,7 @@ import DataStreamy from 'kachery-js/util/DataStreamy';
 import { sleepMsec } from 'kachery-js/util/util';
 import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, localFilePath, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from 'kachery-js/types/kacheryTypes';
 import randomAlphaString from 'kachery-js/util/randomAlphaString';
-import NodeStats from 'kachery-js/NodeStats';
+import { NodeStats } from 'kachery-js';
 
 export class KacheryStorageManager {
     #storageDir: LocalFilePath

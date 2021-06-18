@@ -1,15 +1,15 @@
 import { NodeChannelMembership } from "kachery-js/types/kacheryHubTypes";
 import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "kachery-js/types/kacheryTypes";
 import { formatByteCount, sleepMsec } from "kachery-js/util/util";
-import KacheryDaemonNode from "kachery-js/KacheryDaemonNode";
+import { KacheryNode } from 'kachery-js';
 
 export default class DisplayStateService {
-    #node: KacheryDaemonNode
+    #node: KacheryNode
     #halted = false
     #lastText = ''
     #lastDisplayTimestamp = nowTimestamp()
     #intervalMsec = unscaledDurationMsec(10000)
-    constructor(node: KacheryDaemonNode, private opts: {daemonApiPort: Port | null}) {
+    constructor(node: KacheryNode, private opts: {daemonApiPort: Port | null}) {
         this.#node = node
 
         this._start()

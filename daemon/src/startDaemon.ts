@@ -1,10 +1,10 @@
 import axios from 'axios';
 import fs from 'fs';
-import ExternalInterface from 'kachery-js/ExternalInterface';
-import KacheryDaemonNode from 'kachery-js/KacheryDaemonNode';
-import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyHexToNodeId, publicKeyToHex, signMessageNew, verifySignature } from 'kachery-js/types/crypto_util';
+import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from 'kachery-js/crypto/signatures';
+import ExternalInterface from 'kachery-js/core/ExternalInterface';
+import { KacheryNode } from 'kachery-js';
 import { KacheryNodeRequest, KacheryNodeRequestBody } from 'kachery-js/types/kacheryNodeRequestTypes';
-import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, Signature, UserId } from 'kachery-js/types/kacheryTypes';
+import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, publicKeyHexToNodeId, Signature, UserId } from 'kachery-js/types/kacheryTypes';
 import { KacheryHubPubsubMessageBody } from 'kachery-js/types/pubsubMessages';
 import { isReadableByOthers } from './external/real/LocalFeedManager';
 import MutableManager from './external/real/mutables/MutableManager';
@@ -30,7 +30,7 @@ export interface DaemonInterface {
     displayService: DisplayStateService | null,
     kacheryHubService: KacheryHubService | null,
     clientAuthService: ClientAuthService | null,
-    node: KacheryDaemonNode,
+    node: KacheryNode,
     stop: () => void
 }
 
@@ -55,7 +55,7 @@ const startDaemon = async (args: {
 
 
     const storageDir = kacheryStorageManager.storageDir()
-    const keyPair = storageDir ? await _loadKeypair(storageDir) : createKeyPair()
+    const keyPair = storageDir ? await _loadKeypair(storageDir) : await createKeyPair()
     const nodeId = publicKeyHexToNodeId(publicKeyToHex(keyPair.publicKey)) // get the node id from the public key
 
     if (storageDir) {
@@ -68,16 +68,16 @@ const startDaemon = async (args: {
         const request: KacheryNodeRequest = {
             body: requestBody,
             nodeId,
-            signature: await signMessageNew(requestBody as any as JSONValue, keyPair)
+            signature: await signMessage(requestBody as any as JSONValue, keyPair)
         }
         const x = await axios.post(`${opts.kacheryHubUrl}/api/kacheryNode`, request)
         return x.data
     }
     const signPubsubMessage2 = async (messageBody: KacheryHubPubsubMessageBody): Promise<Signature> => {
-        return await signMessageNew(messageBody as any as JSONValue, keyPair)
+        return await signMessage(messageBody as any as JSONValue, keyPair)
     }
 
-    const kNode = new KacheryDaemonNode({
+    const kNode = new KacheryNode({
         verbose,
         nodeId,
         sendKacheryNodeRequest,
@@ -147,7 +147,7 @@ const _loadKeypair = async (storageDir: LocalFilePath): Promise<KeyPair> => {
         }
     }
     else {
-        const { publicKey, privateKey } = createKeyPair()
+        const { publicKey, privateKey } = await createKeyPair()
         fs.writeFileSync(publicKeyPath, publicKey.toString(), { encoding: 'utf-8' })
         fs.writeFileSync(privateKeyPath, privateKey.toString(), { encoding: 'utf-8', mode: fs.constants.S_IRUSR | fs.constants.S_IWUSR})
         fs.chmodSync(publicKeyPath, fs.constants.S_IRUSR | fs.constants.S_IWUSR)
@@ -167,12 +167,13 @@ const _loadKeypair = async (storageDir: LocalFilePath): Promise<KeyPair> => {
         throw Error('Invalid keyPair')
     }
     await testKeyPair(keyPair)
+    await testKeyPair2(keyPair)
     return keyPair
 }
 
-const testKeyPair = async (keyPair: KeyPair) => {
-    const signature = await signMessageNew({ test: 1 }, keyPair)
-    if (!await verifySignature({ test: 1 } as JSONObject, signature, keyPair.publicKey)) {
+const testKeyPair2 = async (keyPair: KeyPair) => {
+    const signature = await signMessage({ test: 1 }, keyPair)
+    if (!await verifySignature({ test: 1 } as JSONObject, keyPair.publicKey, signature)) {
         /* istanbul ignore next */
         throw new Error('Problem testing public/private keys. Error verifying signature.')
     }

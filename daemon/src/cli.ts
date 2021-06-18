@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
+import { testSignatures } from 'kachery-js/crypto/signatures';
 import { Address, ChannelLabel, isAddress, isArrayOf, isBoolean, isChannelLabel, isNodeId, isNodeLabel, isPort, isString, isUserId, localFilePath, NodeId, NodeLabel, nodeLabel, optional, UserId, _validateObject } from 'kachery-js/types/kacheryTypes';
 import os from 'os';
 import yargs from 'yargs';
@@ -134,6 +135,8 @@ function main() {
         const kacheryHubUrl = argv['kachery-hub-url'] || ''
         if (!kacheryHubUrl) throw Error('kachery-hub-url not set')
         if (!isString(kacheryHubUrl)) throw Error('kachery-hub-url is not a string')
+
+        await testSignatures()
 
         startDaemon({
           verbose,

@@ -7,15 +7,15 @@ import DataStreamy from 'kachery-js/util/DataStreamy';
 import { byteCount, durationMsecToNumber, elapsedSince, isJSONObject, JSONObject, mapToObject, messageCount, nowTimestamp, Port, scaledDurationMsec, toSubfeedWatchesRAM } from 'kachery-js/types/kacheryTypes';
 import { sleepMsec } from 'kachery-js/util/util';
 import daemonVersion from '../daemonVersion';
-import ExternalInterface, { HttpServerInterface } from 'kachery-js/ExternalInterface';
-import { isGetStatsOpts, NodeStatsInterface } from 'kachery-js/getStats';
-import KacheryDaemonNode from 'kachery-js/KacheryDaemonNode';
-import { loadFile } from 'kachery-js/loadFile';
+import ExternalInterface, { HttpServerInterface } from 'kachery-js/core/ExternalInterface';
+import { isGetStatsOpts, NodeStatsInterface } from 'kachery-js/core/getStats';
+import { KacheryNode } from 'kachery-js';
+import { loadFile } from 'kachery-js/core/loadFile';
 import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskRegisterTaskFunctionsRequest, isTaskRequestTaskRequest, isTaskUpdateTaskStatusRequest, isTaskWaitForTaskResultRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskRegisterTaskFunctionsResponse, TaskRequestTaskResponse, TaskUpdateTaskStatusResponse, TaskWaitForTaskResultResponse } from './daemonApiTypes';
 import { RequestedTask } from 'kachery-js/types/kacheryHubTypes';
 
 export default class DaemonApiServer {
-    #node: KacheryDaemonNode
+    #node: KacheryNode
     #app: Express
     // #server: http.Server | https.Server | null = null
     #server: HttpServerInterface | null = null
@@ -171,7 +171,7 @@ export default class DaemonApiServer {
     // This is the API server for the local daemon
     // The local Python code communicates with the daemon
     // via this API
-    constructor(node: KacheryDaemonNode, private externalInterface: ExternalInterface, opts: {verbose: number}) {
+    constructor(node: KacheryNode, private externalInterface: ExternalInterface, opts: {verbose: number}) {
         this.#node = node; // The kachery daemon
         this.#app = express(); // the express app
 
@@ -583,7 +583,7 @@ export default class DaemonApiServer {
 
         // CHAIN:append_messages:step(2)
         await this.#node.feedManager().appendMessages({
-            feedId, subfeedHash, messages, verifySignatures: true
+            feedId, subfeedHash, messages
         });
 
         const response: FeedApiAppendMessagesResponse = {success: true}
