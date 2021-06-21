@@ -1,5 +1,5 @@
-import { JSONStringifyDeterministic, JSONValue, LocalFilePath, localFilePath, scaledDurationMsec, Sha1Hash, sha1OfString } from "kachery-js/types/kacheryTypes"
-import GarbageMap from "kachery-js/util/GarbageMap"
+import { JSONStringifyDeterministic, JSONValue, LocalFilePath, localFilePath, scaledDurationMsec, Sha1Hash, sha1OfString } from "../../../kachery-js/types/kacheryTypes"
+import GarbageMap from "../../../kachery-js/util/GarbageMap"
 import MutableDatabase, { MutableRecord } from "./MutableDatabase"
 
 export default class MutableManager {

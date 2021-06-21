@@ -1,8 +1,8 @@
 import { action } from "./action"
-import { scaledDurationMsec } from "kachery-js/types/kacheryTypes"
-import { sleepMsec } from "kachery-js/util/util"
-import { KacheryNode } from 'kachery-js'
-import KacheryHubClient from "kachery-js/kacheryHubClient/KacheryHubClient"
+import { scaledDurationMsec } from "../kachery-js/types/kacheryTypes"
+import { sleepMsec } from "../kachery-js/util/util"
+import { KacheryNode } from '../kachery-js'
+import KacheryHubClient from "../kachery-js/kacheryHubClient/KacheryHubClient"
 
 export default class KacheryHubService {
     #node: KacheryNode

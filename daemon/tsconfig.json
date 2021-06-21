@@ -8,8 +8,7 @@
     "outDir": "dist",
     "strictNullChecks": true,
     "noImplicitAny": true,
-    "baseUrl": "src",
-    "paths": {"kachery-js/*": ["./kachery-js/*"]}
+    "baseUrl": "src"
   },
   "exclude": [
     "./tests/"

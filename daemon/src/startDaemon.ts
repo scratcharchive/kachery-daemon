@@ -1,11 +1,11 @@
 import axios from 'axios';
 import fs from 'fs';
-import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from 'kachery-js/crypto/signatures';
-import ExternalInterface from 'kachery-js/core/ExternalInterface';
-import { KacheryNode } from 'kachery-js';
-import { KacheryNodeRequest, KacheryNodeRequestBody } from 'kachery-js/types/kacheryNodeRequestTypes';
-import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, publicKeyHexToNodeId, Signature, UserId } from 'kachery-js/types/kacheryTypes';
-import { KacheryHubPubsubMessageBody } from 'kachery-js/types/pubsubMessages';
+import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from './kachery-js/crypto/signatures';
+import ExternalInterface from './kachery-js/core/ExternalInterface';
+import { KacheryNode } from './kachery-js';
+import { KacheryNodeRequest, KacheryNodeRequestBody } from './kachery-js/types/kacheryNodeRequestTypes';
+import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, publicKeyHexToNodeId, Signature, UserId } from './kachery-js/types/kacheryTypes';
+import { KacheryHubPubsubMessageBody } from './kachery-js/types/pubsubMessages';
 import { isReadableByOthers } from './external/real/LocalFeedManager';
 import MutableManager from './external/real/mutables/MutableManager';
 import ClientAuthService from './services/ClientAuthService';
