@@ -31,7 +31,7 @@ export default class KacheryHubService {
             action('sendReportToKacheryHub', {}, async () => {
                 await this._sendReportToKacheryHub()
             }, async (err: Error) => {
-                console.warn(`****************************************** Problem reporting to kachery hub (${err.message})`)
+                console.warn(`****************************************** Problem reporting to kacheryhub (${err.message})`)
             });
             /////////////////////////////////////////////////////////////////////////
 

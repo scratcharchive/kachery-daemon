@@ -94,7 +94,7 @@ function main() {
           type: 'string'
         })
         y.option('kachery-hub-url', {
-          describe: 'Url for the kachery hub app',
+          describe: 'Url for the kacheryhub app',
           type: 'string',
           default: 'https://kacheryhub.org'
         })
