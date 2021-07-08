@@ -1,6 +1,6 @@
-import { KacheryStorageManagerInterface } from "kachery-js/core/ExternalInterface";
-import { byteCount, ByteCount, isByteCount, isNumber, isObject, isSha1Hash, Sha1Hash, Timestamp } from "kachery-js/types/kacheryTypes";
-import GarbageMap from "kachery-js/util/GarbageMap";
+import { KacheryStorageManagerInterface } from "../kachery-js/core/ExternalInterface";
+import { byteCount, ByteCount, isByteCount, isNumber, isObject, isSha1Hash, Sha1Hash, Timestamp } from "../kachery-js/types/kacheryTypes";
+import GarbageMap from "../kachery-js/util/GarbageMap";
 import fs from 'fs'
 import yaml from 'js-yaml'
 

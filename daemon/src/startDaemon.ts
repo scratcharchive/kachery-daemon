@@ -12,7 +12,7 @@ import ClientAuthService from './services/ClientAuthService';
 import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
 import KacheryHubService from './services/KacheryHubService';
-import CleanCacheService from 'services/CleanCacheService';
+import CleanCacheService from './services/CleanCacheService';
 
 export interface StartDaemonOpts {
     authGroup: string | null,
