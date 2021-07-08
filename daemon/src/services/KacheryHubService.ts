@@ -28,7 +28,7 @@ export default class KacheryHubService {
         while (true) {
             if (this.#halted) return
             /////////////////////////////////////////////////////////////////////////
-            action('sendReportToKacheryHub', {}, async () => {
+            await action('sendReportToKacheryHub', {}, async () => {
                 await this._sendReportToKacheryHub()
             }, async (err: Error) => {
                 console.warn(`****************************************** Problem reporting to kacheryhub (${err.message})`)

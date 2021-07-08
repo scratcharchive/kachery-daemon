@@ -151,7 +151,8 @@ function main() {
                 daemonServer: true,
                 mirror: true,
                 kacheryHub: true,
-                clientAuth: true
+                clientAuth: true,
+                cleanCache: true
             },
             kacheryHubUrl
           }

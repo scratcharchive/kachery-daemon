@@ -11,6 +11,7 @@ import { NodeStats } from '../../../kachery-js';
 
 export class KacheryStorageManager {
     #storageDir: LocalFilePath
+    #onFileStoredCallbacks: ((sha1: Sha1Hash) => void)[] = []
     constructor(storageDir: LocalFilePath) {
         if (!fs.existsSync(storageDir.toString())) {
             throw Error(`Kachery storage directory does not exist: ${storageDir}`)
@@ -52,6 +53,7 @@ export class KacheryStorageManager {
             }
         }
         await renameAndCheck(destPathTmp, destPath, data.length)
+        this._reportFileStored(sha1)
     }
     async storeFileFromStream(ds: DataStreamy, fileSize: ByteCount, o: {calculateHashOnly: boolean}): Promise<{sha1: Sha1Hash, manifestSha1: Sha1Hash | null}> {
         const tmpDestPath = !o.calculateHashOnly ? `${this.#storageDir}/store.file.${randomAlphaString(10)}.tmp` : null
@@ -130,6 +132,7 @@ export class KacheryStorageManager {
                         }
                         _cleanup()
                         resolve({sha1: sha1Computed, manifestSha1})
+                        this._reportFileStored(sha1Computed)
                     }
                     if ((!o.calculateHashOnly) && (tmpDestPath)) {
                         if (fs.existsSync(destPath)) {
@@ -186,6 +189,7 @@ export class KacheryStorageManager {
         const _reportDone = () => {
             _cleanup()
             ret.producer().end()
+            this._reportFileStored(o.sha1)
         }
 
         ret.producer().start(size)
@@ -359,6 +363,7 @@ export class KacheryStorageManager {
         }
         fs.mkdirSync(destParentPath, {recursive: true});
         await renameAndCheck(tmpPath, destPath, totalSizeBytes)
+        this._reportFileStored(sha1)
     }
     async hasLocalFile(fileKey: FileKey): Promise<boolean> {
         if (fileKey.sha1) {
@@ -398,6 +403,27 @@ export class KacheryStorageManager {
             }
         }
         throw Error('Unable get data read stream for local file.')
+    }
+    async moveFileToTrash(sha1: Sha1Hash) {
+        const info = await this._getLocalFileInfo(sha1)
+        if (!info.path) return
+        const s = sha1
+        const destParentPath = `${this.#storageDir}/sha1-trash/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}`
+        const destPath = `${destParentPath}/${s}`
+        if (fs.existsSync(destPath)) {
+            await fs.promises.unlink(info.path.toString())
+            return
+        }
+        if (!fs.existsSync(destParentPath)) {
+            fs.mkdirSync(destParentPath, {recursive: true});
+        }
+        await fs.promises.rename(info.path.toString(), destPath)
+    }
+    onFileStored(callback: (sha1: Sha1Hash) => void) {
+        this.#onFileStoredCallbacks.push(callback)
+    }
+    _reportFileStored(sha1: Sha1Hash) {
+        this.#onFileStoredCallbacks.forEach(cb => cb(sha1))
     }
     async _getLocalFileInfo(fileSha1: Sha1Hash): Promise<{ path: LocalFilePath | null, size: ByteCount | null }> {
         const s = fileSha1;

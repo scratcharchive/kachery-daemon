@@ -12,6 +12,7 @@ import ClientAuthService from './services/ClientAuthService';
 import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
 import KacheryHubService from './services/KacheryHubService';
+import CleanCacheService from 'services/CleanCacheService';
 
 export interface StartDaemonOpts {
     authGroup: string | null,
@@ -20,7 +21,8 @@ export interface StartDaemonOpts {
         daemonServer?: boolean
         mirror?: boolean,
         kacheryHub?: boolean,
-        clientAuth?: boolean
+        clientAuth?: boolean,
+        cleanCache?: boolean
     },
     kacheryHubUrl: string
 }
@@ -30,6 +32,7 @@ export interface DaemonInterface {
     displayService: DisplayStateService | null,
     kacheryHubService: KacheryHubService | null,
     clientAuthService: ClientAuthService | null,
+    cleanCacheService: CleanCacheService | null,
     node: KacheryNode,
     stop: () => void
 }
@@ -109,11 +112,14 @@ const startDaemon = async (args: {
     const clientAuthService = opts.services.clientAuth ? new ClientAuthService(kNode, {
         clientAuthGroup: opts.authGroup ? opts.authGroup : null
     }) : null
+    const cleanCacheService = opts.services.cleanCache ? new CleanCacheService(kNode, {
+    }) : null
 
     const _stop = () => {
         displayService && displayService.stop()
         kacheryHubService && kacheryHubService.stop()
         clientAuthService && clientAuthService.stop()
+        cleanCacheService && cleanCacheService.stop()
         // wait a bit after stopping services before cleaning up the rest (for clean exit of services)
         setTimeout(() => {
             daemonApiServer && daemonApiServer.stop()
@@ -128,6 +134,7 @@ const startDaemon = async (args: {
         displayService,
         kacheryHubService,
         clientAuthService,
+        cleanCacheService,
         node: kNode,
         stop: _stop
     }
