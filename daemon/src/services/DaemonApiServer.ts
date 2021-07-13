@@ -678,6 +678,7 @@ export default class DaemonApiServer {
 
         const response: TaskRegisterTaskFunctionsResponse = {success: true, requestedTasks}
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+
         return response
     }
     // /task/updateTaskStatus

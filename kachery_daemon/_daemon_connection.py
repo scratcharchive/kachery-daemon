@@ -84,9 +84,14 @@ def _buffered_probe_daemon(daemon_port=None):
     return _buffered_probe_data.result
 
 def _probe_daemon(daemon_port=None):
+    # There is a reason that we use no_client_auth here
+    # It is because we need to probe the daemon in order to
+    # determine the kachery storage directory, and only then
+    # can we access the client auth code
     daemon_url, headers = _daemon_url(daemon_port=daemon_port, no_client_auth=True)
     url = f'{daemon_url}/probe'
     try:
+        # see above for reason that we don't use the headers here
         x = _http_get_json(url)
     except Exception as e:
         return None
@@ -121,7 +126,7 @@ def _kachery_temp_dir() -> str:
     if d is not None:
         return _create_if_needed(d)
     if _kachery_offline_storage_dir_env_is_set():
-        return _create_if_needed(os.getenv('KACHERY_OFFLINE_STORAGE_DIR') + '/kachery-tmp')
+        return _create_if_needed(os.getenv('KACHERY_OFFLINE_STORAGE_DIR', '') + '/kachery-tmp')
     else:
         return _create_if_needed(tempfile.gettempdir() + '/kachery-tmp')
 

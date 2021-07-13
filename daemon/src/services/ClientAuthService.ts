@@ -28,12 +28,13 @@ export default class ClientAuthService {
             const previous = this.#currentClientAuthCode
             this.#currentClientAuthCode = createClientAuthCode()
             const clientAuthPath = this.#node.kacheryStorageManager().storageDir() + '/client-auth'
-            await fs.promises.writeFile(clientAuthPath, this.#currentClientAuthCode, {mode: fs.constants.S_IRUSR | fs.constants.S_IRGRP | fs.constants.S_IWUSR})
+            const clientAuthPathTmp = clientAuthPath + '.tmp'
+            await fs.promises.writeFile(clientAuthPathTmp, this.#currentClientAuthCode, {mode: fs.constants.S_IRUSR | fs.constants.S_IRGRP | fs.constants.S_IWUSR})
             const group = this.opts.clientAuthGroup
             if (group) {
                 const user = userInfo().username
                 try {
-                    child_process.execSync(`chown ${user}:${group} ${clientAuthPath}`);
+                    child_process.execSync(`chown ${user}:${group} ${clientAuthPathTmp}`);
                 }
                 catch(e) {
                     console.warn(`Problem setting ownership of client auth file. Perhaps you do not belong to group "${group}".`, e.message)
@@ -41,6 +42,10 @@ export default class ClientAuthService {
                     process.exit(1)
                 }
             }
+            if (fs.existsSync(clientAuthPath)) {
+                await fs.promises.unlink(clientAuthPath)
+            }
+            await fs.promises.rename(clientAuthPathTmp, clientAuthPath)
             this.#node.setClientAuthCode(this.#currentClientAuthCode, previous)
 
             await sleepMsec(intervalMsec, () => {return !this.#halted})

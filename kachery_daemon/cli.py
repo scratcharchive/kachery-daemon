@@ -4,7 +4,7 @@ import sys
 from typing import Any, List, Union, cast
 from .version import __version__
 from .start_daemon import start_daemon
-from ._daemon_connection import _get_node_id
+from ._daemon_connection import _get_node_id, _read_client_auth_code
 
 import click
 
@@ -35,7 +35,16 @@ def start(label: str, owner: str, method: str, verbose: int, node_arg: List[str]
 @click.command(help="Print information about this node.")
 def info():
     node_id = _get_node_id()
+    try:
+        client_auth_code = _read_client_auth_code()
+    except:
+        client_auth_code = None
     print(f'Node ID: {node_id}')
+    if client_auth_code:
+        print('You have access to this daemon')
+    else:
+        print('You do not have access to this daemon')
+        
 
 @click.command(help="Display kachery_daemon version and exit.")
 def version():
