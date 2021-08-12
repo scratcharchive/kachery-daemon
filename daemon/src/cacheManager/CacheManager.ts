@@ -28,6 +28,7 @@ class CacheManager {
         const storageDir = this.kacheryStorageManager.storageDir()
         let p = `${storageDir}/sha1`
         if (subdirs.length > 0) p = `${p}/${subdirs.join('/')}`
+        if (!fs.existsSync(p)) return
         const a = await fs.promises.readdir(p)
         for (let x of a) {
             if ((subdirs.length <= 2) && (x.length === 2)) {
