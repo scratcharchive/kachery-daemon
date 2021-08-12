@@ -6,7 +6,7 @@ import child_process from 'child_process'
 import fs from 'fs'
 import { userInfo } from 'os'
 import randomAlphaString from "../kachery-js/util/randomAlphaString";
-import { renameAndCheck } from "external/real/kacheryStorage/KacheryStorageManager";
+import { renameAndCheck } from "../external/real/kacheryStorage/KacheryStorageManager";
 
 export default class ClientAuthService {
     #node: KacheryNode
