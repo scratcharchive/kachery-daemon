@@ -6,6 +6,7 @@ import child_process from 'child_process'
 import fs from 'fs'
 import { userInfo } from 'os'
 import randomAlphaString from "../kachery-js/util/randomAlphaString";
+import { renameAndCheck } from "external/real/kacheryStorage/KacheryStorageManager";
 
 export default class ClientAuthService {
     #node: KacheryNode
@@ -45,7 +46,8 @@ export default class ClientAuthService {
             if (fs.existsSync(clientAuthPath)) {
                 await fs.promises.unlink(clientAuthPath)
             }
-            await fs.promises.rename(clientAuthPathTmp, clientAuthPath)
+            await renameAndCheck(clientAuthPathTmp, clientAuthPath, this.#currentClientAuthCode.length)
+            // await fs.promises.rename(clientAuthPathTmp, clientAuthPath)
             this.#node.setClientAuthCode(this.#currentClientAuthCode, previous)
 
             await sleepMsec(intervalMsec, () => {return !this.#halted})
