@@ -150,7 +150,7 @@ export const _validateObject = (x: any, spec: ValidateObjectSpec, opts?: {callba
         o.callback && o.callback('x is undefined/null.')
         return false;
     }
-    if (!isObject(x)) {
+    if (typeof(x) !== 'object') {
         o.callback && o.callback('x is not an Object.')
         return false;
     }
@@ -678,8 +678,8 @@ export const feedName = (x: string): FeedName => {
 export interface FeedSubfeedId extends String {
     __feedSubfeedId__: never; // phantom
 }
-export const feedSubfeedId = (feedId: FeedId, subfeedHash: SubfeedHash): FeedSubfeedId => {
-    return (feedId.toString() + ':' + subfeedHash.toString()) as any as FeedSubfeedId; 
+export const feedSubfeedId = (feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName | undefined): FeedSubfeedId => {
+    return (feedId.toString() + ':' + subfeedHash.toString() + ':' + (channelName?.toString() || '')) as any as FeedSubfeedId; 
 }
 export const isFeedSubfeedId = (x: any): x is FeedSubfeedId => {
     if (!isString(x)) return false;
@@ -829,8 +829,8 @@ export const durationMsecToNumber = (x: DurationMsec): number => {
     return x as any as number;
 }
 export const scaledDurationMsec = (n: number) => {
-    if (process.env.KACHERY_P2P_SPEEDUP_FACTOR) {
-        n /= Number(process.env.KACHERY_P2P_SPEEDUP_FACTOR)
+    if (process.env.KACHERY_TEST_SPEEDUP_FACTOR) {
+        n /= Number(process.env.KACHERY_TEST_SPEEDUP_FACTOR)
     }
     return n as any as DurationMsec
 }

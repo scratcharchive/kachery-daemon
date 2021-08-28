@@ -287,11 +287,13 @@ export const isFeedApiGetFeedIdResponse = (x: any): x is FeedApiGetFeedIdRespons
 
 export interface TaskRegisterTaskFunctionsRequest {
     taskFunctions: RegisteredTaskFunction[]
+    backendId?: string | null
     timeoutMsec: DurationMsec
 }
 export const isTaskRegisterTaskFunctionsRequest = (x: any): x is TaskRegisterTaskFunctionsRequest => {
     return _validateObject(x, {
         taskFunctions: isArrayOf(isRegisteredTaskFunction),
+        backendId: optional(isOneOf([isString, isNull])),
         timeoutMsec: isDurationMsec
     })
 }
@@ -359,6 +361,7 @@ export const isTaskCreateSignedTaskResultUploadUrlResponse = (x: any): x is Task
 
 export type TaskRequestTaskRequest = {
     channelName: ChannelName
+    backendId?: string | null
     taskFunctionId: TaskFunctionId
     taskKwargs: TaskKwargs
     taskFunctionType: TaskFunctionType
@@ -368,6 +371,7 @@ export type TaskRequestTaskRequest = {
 export const isTaskRequestTaskRequest = (x: any): x is TaskRequestTaskRequest => {
     return _validateObject(x, {
         channelName: isChannelName,
+        backendId: optional(isOneOf([isString, isNull])),
         taskFunctionId: isTaskFunctionId,
         taskKwargs: isTaskKwargs,
         taskFunctionType: isTaskFunctionType,

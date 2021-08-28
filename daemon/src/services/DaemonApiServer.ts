@@ -672,9 +672,9 @@ export default class DaemonApiServer {
     async _handleTaskRegisterTaskFunctions(reqData: JSONObject) {
         /* istanbul ignore next */
         if (!isTaskRegisterTaskFunctionsRequest(reqData)) throw Error('Invalid request in _handleTaskRegisterTaskFunctions')
-        const { taskFunctions, timeoutMsec } = reqData
+        const { taskFunctions, backendId, timeoutMsec } = reqData
 
-        const requestedTasks: RequestedTask[] = await this.#node.kacheryHubInterface().registerTaskFunctions({taskFunctions, timeoutMsec})
+        const requestedTasks: RequestedTask[] = await this.#node.kacheryHubInterface().registerTaskFunctions({taskFunctions, timeoutMsec, backendId: backendId || null})
 
         const response: TaskRegisterTaskFunctionsResponse = {success: true, requestedTasks}
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
@@ -709,10 +709,10 @@ export default class DaemonApiServer {
     async _handleTaskRequestTask(reqData: JSONObject) {
         /* istanbul ignore next */
         if (!isTaskRequestTaskRequest(reqData)) throw Error('Invalid request in _handleTaskRequestTask')
-        const { channelName, taskFunctionId, taskKwargs, timeoutMsec, taskFunctionType } = reqData
+        const { channelName, taskFunctionId, taskKwargs, timeoutMsec, taskFunctionType, backendId } = reqData
 
         const taskId = this.#node.kacheryHubInterface().createTaskIdForTask({taskFunctionId, taskKwargs, taskFunctionType})
-        const result = await this.#node.kacheryHubInterface().requestTaskFromChannel({channelName, taskId, taskFunctionId, taskKwargs, timeoutMsec, taskFunctionType})
+        const result = await this.#node.kacheryHubInterface().requestTaskFromChannel({channelName, taskId, taskFunctionId, taskKwargs, timeoutMsec, taskFunctionType, backendId: backendId || null})
 
         const response: TaskRequestTaskResponse = {
             success: true,
