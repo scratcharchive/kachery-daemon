@@ -5,9 +5,34 @@ import { ClientRequest } from 'http';
 import { Socket } from 'net';
 import DataStreamy from '../../../kachery-js/util/DataStreamy';
 import { sleepMsec } from '../../../kachery-js/util/util';
-import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, localFilePath, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString } from '../../../kachery-js/types/kacheryTypes';
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, isNull, isNumber, isOneOf, isString, localFilePath, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString, _validateObject } from '../../../kachery-js/types/kacheryTypes';
 import randomAlphaString from '../../../kachery-js/util/randomAlphaString';
 import { NodeStats } from '../../../kachery-js';
+
+type LinkObject = {
+    path: string,
+    manifestSha1: string | null,
+    stat: {
+        size: number,
+        mtime: number
+    },
+    _writingProcess?: string
+}
+
+const isLinkObjectStat = (x: any) => {
+    return _validateObject(x, {
+        size: isNumber,
+        mtime: isNumber
+    }, {allowAdditionalFields: true})
+}
+
+const isLinkObject = (x: any): x is LinkObject => {
+    return _validateObject(x, {
+        path: isString,
+        manifestSha1: isOneOf([isString, isNull]),
+        stat: isLinkObjectStat
+    }, {allowAdditionalFields: true})
+}
 
 export class KacheryStorageManager {
     #storageDir: LocalFilePath
@@ -283,9 +308,9 @@ export class KacheryStorageManager {
         }
         const destPath = `${destParentPath}/${s}`
         if (!fs.existsSync(destPath)) {
-            const x = {
-                path: localFilePath,
-                manifestSha1: manifestSha1,
+            const x: LinkObject = {
+                path: localFilePath.toString(),
+                manifestSha1: manifestSha1 ? manifestSha1.toString() : null,
                 stat: {
                     size: o.size,
                     mtime: o.mtime
@@ -426,6 +451,17 @@ export class KacheryStorageManager {
         this.#onFileStoredCallbacks.forEach(cb => cb(sha1))
     }
     async _getLocalFileInfo(fileSha1: Sha1Hash): Promise<{ path: LocalFilePath | null, size: ByteCount | null }> {
+        // first check for regular file (not linked)
+        const {path: path1, size: size1} = await this._getLocalFileInfo1(fileSha1)
+        if (path1) return {path: path1, size: size1}
+        // then check for linked file
+        const {path: path2, size: size2} = await this._getLocalFileInfo2(fileSha1)
+        if (path2) return {path: path2, size: size2}
+        // we didn't find it
+        return {path: null, size: null}
+    }
+    async _getLocalFileInfo1(fileSha1: Sha1Hash): Promise<{ path: LocalFilePath | null, size: ByteCount | null }> {
+        // check for regular file (not linked)
         const s = fileSha1;
         const path = localFilePath(`${this.#storageDir}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`)
         let stat0: fs.Stats
@@ -438,6 +474,34 @@ export class KacheryStorageManager {
         return {
             path,
             size: byteCount(stat0.size)
+        }
+    }
+    async _getLocalFileInfo2(fileSha1: Sha1Hash): Promise<{ path: LocalFilePath | null, size: ByteCount | null }> {
+        // check for linked file
+        const s = fileSha1;
+        const linkPath = localFilePath(`${this.#storageDir}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}.link`)
+        if (fs.existsSync(linkPath.toString())) {
+            const x = await readJsonFile(linkPath.toString())
+            if (!x) return {path: null, size: null}
+            if (!isLinkObject(x)) {
+                console.warn(`Unexpected. Not a link object: ${linkPath}`)
+                return {path: null, size: null}
+            }
+            const path = x.path
+            let stat0: fs.Stats
+            try {
+                stat0 = await fs.promises.stat(path.toString())
+            }
+            catch (err) {
+                return { path: null, size: null }
+            }
+            return {
+                path: path as any as LocalFilePath,
+                size: byteCount(stat0.size)
+            }
+        }
+        else {
+            return {path: null, size: null}
         }
     }
     storageDir() {
@@ -513,4 +577,14 @@ export const renameAndCheck = async (srcPath: string, dstPath: string, expectedS
         }
     }
     fs.chmodSync(dstPath, fs.constants.S_IRUSR | fs.constants.S_IWUSR | fs.constants.S_IRGRP | fs.constants.S_IROTH)
+}
+
+const readJsonFile = async (path: string): Promise<Object | null> => {
+    try {
+        const txt = await fs.promises.readFile(path, 'utf-8') as string;
+        return JSON.parse(txt);
+    }
+    catch(err) {
+        return null
+    }
 }
