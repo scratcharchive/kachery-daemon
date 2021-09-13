@@ -28,7 +28,9 @@ export const signMessage = async (msg: JSONValue, keyPair: KeyPair): Promise<Sig
     const signatureHex = Buffer.from(signature).toString('hex')
     if (!isSignature(signatureHex)) throw Error('Problem signing message')
     const okay = await verifySignature(msg, keyPair.publicKey, signatureHex)
-    if (!okay) throw Error('Problem verifying message signature in signMessageNew')
+    if (!okay) {
+        throw Error('Problem verifying message signature in signMessageNew')
+    }
     return signatureHex
 }
 

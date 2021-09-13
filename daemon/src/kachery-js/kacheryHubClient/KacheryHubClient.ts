@@ -1,8 +1,10 @@
 import Ably from 'ably'
-import { hexToPublicKey, verifySignature } from '../crypto/signatures'
-import { isPubsubAuth, PubsubAuth } from "../types/kacheryHubTypes"
-import { CreateSignedFileUploadUrlRequestBody, CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, GetChannelConfigRequestBody, GetNodeConfigRequestBody, GetPubsubAuthForChannelRequestBody, isCreateSignedFileUploadUrlResponse, isCreateSignedSubfeedMessageUploadUrlResponse, isCreateSignedTaskResultUploadUrlResponse, isGetChannelConfigResponse, isGetNodeConfigResponse, KacheryNodeRequestBody, ReportRequestBody } from "../types/kacheryNodeRequestTypes"
-import { ByteCount, ChannelName, FeedId, JSONValue, NodeId, nodeIdToPublicKeyHex, NodeLabel, PubsubChannelName, Sha1Hash, SubfeedHash, TaskId, UserId } from "../types/kacheryTypes"
+import BitwooderDelegationCert from 'kachery-js/types/BitwooderDelegationCert'
+import { hexToPrivateKey, hexToPublicKey, signMessage, verifySignature } from '../crypto/signatures'
+import { BitwooderResourceRequest, BitwooderResourceResponse, GetAblyTokenRequestRequest, GetUploadUrlRequest } from '../types/BitwooderResourceRequest'
+import { PubsubAuth } from "../types/kacheryHubTypes"
+import { CreateSignedSubfeedMessageUploadUrlRequestBody, CreateSignedTaskResultUploadUrlRequestBody, GetBitwooderCertForChannelRequestBody, GetChannelConfigRequestBody, GetNodeConfigRequestBody, isCreateSignedSubfeedMessageUploadUrlResponse, isCreateSignedTaskResultUploadUrlResponse, isGetBitwooderCertForChannelResponse, isGetChannelConfigResponse, isGetNodeConfigResponse, KacheryNodeRequestBody, ReportRequestBody } from "../types/kacheryNodeRequestTypes"
+import { ByteCount, ChannelName, FeedId, JSONValue, NodeId, nodeIdToPublicKeyHex, NodeLabel, PrivateKeyHex, PubsubChannelName, Sha1Hash, SubfeedHash, TaskId, urlString, UserId } from "../types/kacheryTypes"
 import { isKacheryHubPubsubMessageData, KacheryHubPubsubMessageBody } from '../types/pubsubMessages'
 import randomAlphaString from '../util/randomAlphaString'
 import { AblyAuthCallback, AblyAuthCallbackCallback } from "./AblyPubsubClient"
@@ -15,10 +17,21 @@ export type IncomingKacheryHubPubsubMessage = {
     message: KacheryHubPubsubMessageBody
 }
 
+const minuteMsec = 1000 * 60
+
 class KacheryHubClient {
     #pubsubClients: {[key: string]: PubsubClient} = {}
     #incomingPubsubMessageCallbacks: {[key: string]: (x: IncomingKacheryHubPubsubMessage) => void} = {}
-    constructor(private opts: {nodeId: NodeId, sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>, ownerId?: UserId, nodeLabel?: NodeLabel, kacheryHubUrl: string}) {
+    #bitwooderCertsByChannel: {[key: string]: {cert: BitwooderDelegationCert, key: PrivateKeyHex}} = {}
+    constructor(private opts: {
+        nodeId: NodeId,
+        sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>,
+        sendBitwooderResourceRequest: (request: BitwooderResourceRequest) => Promise<BitwooderResourceResponse>,
+        ownerId?: UserId,
+        nodeLabel?: NodeLabel,
+        kacheryHubUrl: string
+        bitwooderUrl: string
+    }) {
     }
     async fetchNodeConfig() {
         if (!this.opts.ownerId) throw Error('No owner ID in fetchNodeConfig')
@@ -54,20 +67,81 @@ class KacheryHubClient {
         if (!channelConfig) throw Error('Unexpected, no channelConfig')
         return channelConfig
     }
-    async fetchPubsubAuthForChannel(channelName: ChannelName) {
-        if (!this.opts.ownerId) throw Error('No owner ID in fetchPubsubAuthForChannel')
-        const reqBody: GetPubsubAuthForChannelRequestBody = {
-            type: 'getPubsubAuthForChannel',
+    async getBitwooderCertForChannel(channelName: ChannelName): Promise<{cert: BitwooderDelegationCert, key: PrivateKeyHex}> {
+        if (!this.opts.ownerId) throw Error('No owner ID in getBitwooderCertForChannel')
+        let a: {cert: BitwooderDelegationCert, key: PrivateKeyHex} | undefined = this.#bitwooderCertsByChannel[channelName.toString()]
+        if (a) {
+            if (a.cert.payload.expires < Date.now() + 4000) { // give the expiration a buffer
+                a = undefined
+            }
+        }
+        if (a) return a
+        // todo: there is a race condition - we may make several requests before we find it in the memory cache
+        const reqBody: GetBitwooderCertForChannelRequestBody = {
+            type: 'getBitwooderCertForChannel',
             nodeId: this.nodeId,
             ownerId: this.opts.ownerId,
             channelName
         }
-        const pubsubAuth = await this._sendRequest(reqBody)
-        if (!isPubsubAuth(pubsubAuth)) {
-            console.warn(pubsubAuth)
-            throw Error('Invalid pubsub auth')
+        const resp = await this._sendRequest(reqBody)
+        if (!isGetBitwooderCertForChannelResponse(resp)) {
+            throw Error('Invalid response in getBitwooderCertForChannel')
         }
-        return pubsubAuth
+        a = {cert: resp.cert, key: resp.key}
+        this.#bitwooderCertsByChannel[channelName.toString()] = a
+        return a
+    }
+    async fetchPubsubAuthForChannel(channelName: ChannelName): Promise<PubsubAuth> {
+        if (!this.opts.ownerId) throw Error('No owner ID in fetchPubsubAuthForChannel')
+        const channelConfig = await this.fetchChannelConfig(channelName)
+        const resourceId = channelConfig.bitwooderResourceId
+        if (!resourceId) {
+            throw Error('No bitwooderResourceId in channel config (fetchPubsubAuthForChannel)')
+        }
+        const {cert: bitwooderCert, key: bitwooderCertKey} = await this.getBitwooderCertForChannel(channelName)
+        const ablyCapability = bitwooderCert.payload.attributes.ablyCapability
+        if (!ablyCapability) {
+            throw Error('No ablyCapability in bitwooder cert')
+        }
+        const payload = {
+            type: 'getAblyTokenRequest' as 'getAblyTokenRequest',
+            expires: Date.now() + minuteMsec * 1,
+            resourceId,
+            capability: ablyCapability
+        }
+        const keyPair = {
+            publicKey: hexToPublicKey(bitwooderCert.payload.delegatedSignerId),
+            privateKey: hexToPrivateKey(bitwooderCertKey)
+        }
+        const req: GetAblyTokenRequestRequest = {
+            type: 'getAblyTokenRequest',
+            payload,
+            auth: {
+                signerId: bitwooderCert.payload.delegatedSignerId,
+                signature: await signMessage(payload, keyPair),
+                delegationCertificate: bitwooderCert
+            }
+        }
+        const resp: BitwooderResourceResponse = await this._sendRequestToBitwooder(req)
+        if (resp.type !== 'getAblyTokenRequest') {
+            throw Error('Unexpected response type for getAblyTokenRequest')
+        }
+        return {
+            ablyTokenRequest: resp.ablyTokenRequest
+        }
+
+        // const reqBody: GetPubsubAuthForChannelRequestBody = {
+        //     type: 'getPubsubAuthForChannel',
+        //     nodeId: this.nodeId,
+        //     ownerId: this.opts.ownerId,
+        //     channelName
+        // }
+        // const pubsubAuth = await this._sendRequest(reqBody)
+        // if (!isPubsubAuth(pubsubAuth)) {
+        //     console.warn(pubsubAuth)
+        //     throw Error('Invalid pubsub auth')
+        // }
+        // return pubsubAuth
     }
     async report() {
         if (!this.opts.ownerId) throw Error('No owner ID in report')
@@ -83,19 +157,60 @@ class KacheryHubClient {
     async createSignedFileUploadUrl(a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) {
         if (!this.opts.ownerId) throw Error('No owner ID in createSignedFileUploadUrl')
         const {channelName, sha1, size} = a
-        const reqBody: CreateSignedFileUploadUrlRequestBody = {
-            type: 'createSignedFileUploadUrl',
-            nodeId: this.nodeId,
-            ownerId: this.opts.ownerId,
-            channelName,
-            sha1,
-            size
+
+        const channelConfig = await this.fetchChannelConfig(channelName)
+        const resourceId = channelConfig.bitwooderResourceId
+        if (!resourceId) {
+            throw Error('No bitwooderResourceId in channel config (createSignedFileUploadUrl)')
         }
-        const x = await this._sendRequest(reqBody)
-        if (!isCreateSignedFileUploadUrlResponse(x)) {
-            throw Error('Unexpected response for createSignedFileUploadUrl')
+
+        const s = sha1
+        const filePath = `${channelName}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`
+        
+        const {cert: bitwooderCert, key: bitwooderCertKey} = await this.getBitwooderCertForChannel(channelName)
+
+        const payload = {
+            type: 'getUploadUrl' as 'getUploadUrl',
+            expires: Date.now() + minuteMsec * 1,
+            resourceId,
+            filePath, 
+            size: Number(size)
         }
-        return x.signedUrl
+
+        const keyPair = {
+            publicKey: hexToPublicKey(bitwooderCert.payload.delegatedSignerId),
+            privateKey: hexToPrivateKey(bitwooderCertKey)
+        }
+        const req: GetUploadUrlRequest = {
+            type: 'getUploadUrl',
+            payload,
+            auth: {
+                signerId: bitwooderCert.payload.delegatedSignerId,
+                signature: await signMessage(payload, keyPair),
+                delegationCertificate: bitwooderCert
+            }
+        }
+
+        const resp: BitwooderResourceResponse = await this._sendRequestToBitwooder(req)
+        if (resp.type !== 'getUploadUrl') {
+            throw Error('Unexpected response type for getUploadUrl')
+        }
+        return urlString(resp.uploadUrl)
+        
+        // const {channelName, sha1, size} = a
+        // const reqBody: CreateSignedFileUploadUrlRequestBody = {
+        //     type: 'createSignedFileUploadUrl',
+        //     nodeId: this.nodeId,
+        //     ownerId: this.opts.ownerId,
+        //     channelName,
+        //     sha1,
+        //     size
+        // }
+        // const x = await this._sendRequest(reqBody)
+        // if (!isCreateSignedFileUploadUrlResponse(x)) {
+        //     throw Error('Unexpected response for createSignedFileUploadUrl')
+        // }
+        // return x.signedUrl
     }
     async createSignedSubfeedMessageUploadUrls(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
         if (!this.opts.ownerId) throw Error('No owner ID in createSignedSubfeedMessageUploadUrls')
@@ -207,8 +322,14 @@ class KacheryHubClient {
     async _sendRequest(requestBody: KacheryNodeRequestBody): Promise<JSONValue> {
         return await this.opts.sendKacheryNodeRequest(requestBody)
     }
+    async _sendRequestToBitwooder(request: BitwooderResourceRequest): Promise<BitwooderResourceResponse> {
+        return await this.opts.sendBitwooderResourceRequest(request)
+    }
     _kacheryHubUrl() {
         return this.opts.kacheryHubUrl
+    }
+    _bitwooderUrl() {
+        return this.opts.bitwooderUrl
     }
 }
 

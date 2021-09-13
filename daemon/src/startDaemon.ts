@@ -13,6 +13,7 @@ import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
 import KacheryHubService from './services/KacheryHubService';
 import CleanCacheService from './services/CleanCacheService';
+import { BitwooderResourceRequest, BitwooderResourceResponse } from 'kachery-js/types/BitwooderResourceRequest';
 
 export interface StartDaemonOpts {
     authGroup: string | null,
@@ -24,7 +25,8 @@ export interface StartDaemonOpts {
         clientAuth?: boolean,
         cleanCache?: boolean
     },
-    kacheryHubUrl: string
+    kacheryHubUrl: string,
+    bitwooderUrl: string
 }
 
 export interface DaemonInterface {
@@ -76,6 +78,10 @@ const startDaemon = async (args: {
         const x = await axios.post(`${opts.kacheryHubUrl}/api/kacheryNode`, request)
         return x.data
     }
+    const sendBitwooderResourceRequest = async (request: BitwooderResourceRequest): Promise<BitwooderResourceResponse> => {
+        const x = await axios.post(`${opts.bitwooderUrl}/api/resource`, request)
+        return x.data as any as BitwooderResourceResponse
+    }
     const signPubsubMessage2 = async (messageBody: KacheryHubPubsubMessageBody): Promise<Signature> => {
         return await signMessage(messageBody as any as JSONValue, keyPair)
     }
@@ -84,6 +90,7 @@ const startDaemon = async (args: {
         verbose,
         nodeId,
         sendKacheryNodeRequest,
+        sendBitwooderResourceRequest,
         signPubsubMessage: signPubsubMessage2,
         label,
         ownerId,
@@ -92,6 +99,7 @@ const startDaemon = async (args: {
         localFeedManager,
         opts: {
             kacheryHubUrl: opts.kacheryHubUrl,
+            bitwooderUrl: opts.bitwooderUrl,
             verifySubfeedMessageSignatures: true
         }
     })

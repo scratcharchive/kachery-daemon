@@ -1,10 +1,11 @@
 import axios from "axios";
+import { BitwooderResourceRequest, BitwooderResourceResponse } from "kachery-js/types/BitwooderResourceRequest";
 import KacheryHubClient, { IncomingKacheryHubPubsubMessage } from "../kacheryHubClient/KacheryHubClient";
 import IncomingTaskManager, { ProbeTaskFunctionsResult } from "../tasks/IncomingTaskManager";
 import OutgoingTaskManager from "../tasks/outgoingTaskManager";
 import { NodeConfig, RegisteredTaskFunction, RequestedTask } from "../types/kacheryHubTypes";
 import { KacheryNodeRequestBody } from "../types/kacheryNodeRequestTypes";
-import { ByteCount, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, scaledDurationMsec, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskFunctionType, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "../types/kacheryTypes";
+import { ByteCount, channelName, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, scaledDurationMsec, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskFunctionType, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "../types/kacheryTypes";
 import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, ProbeTaskFunctionsBody, RequestFileMessageBody, RequestSubfeedMessageBody, RequestTaskMessageBody, UpdateSubfeedMessageCountMessageBody, UpdateTaskStatusMessageBody, UploadFileStatusMessageBody } from "../types/pubsubMessages";
 import cacheBust from "../util/cacheBust";
 import computeTaskHash from "../util/computeTaskHash";
@@ -39,9 +40,19 @@ class KacheryHubInterface {
     #updateSubfeedMessageCountCallbacks: ((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) => void)[] = []
     #incomingTaskManager: IncomingTaskManager
     #outgoingTaskManager: OutgoingTaskManager
-    constructor(private opts: {nodeId: NodeId, sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>, signPubsubMessage: (messageBody: KacheryHubPubsubMessageBody) => Promise<Signature>, ownerId?: UserId, nodeLabel?: NodeLabel, kacheryHubUrl: string, nodeStats: NodeStats}) {
-        const {nodeId, sendKacheryNodeRequest, ownerId, nodeLabel, kacheryHubUrl} = opts
-        this.#kacheryHubClient = new KacheryHubClient({nodeId, sendKacheryNodeRequest, ownerId, nodeLabel, kacheryHubUrl})
+    constructor(private opts: {
+        nodeId: NodeId, 
+        sendKacheryNodeRequest: (message: KacheryNodeRequestBody) => Promise<JSONValue>,
+        sendBitwooderResourceRequest: (request: BitwooderResourceRequest) => Promise<BitwooderResourceResponse>,
+        signPubsubMessage: (messageBody: KacheryHubPubsubMessageBody) => Promise<Signature>,
+        ownerId?: UserId,
+        nodeLabel?: NodeLabel,
+        kacheryHubUrl: string,
+        bitwooderUrl: string,
+        nodeStats: NodeStats
+    }) {
+        const {nodeId, sendKacheryNodeRequest, sendBitwooderResourceRequest, ownerId, nodeLabel, kacheryHubUrl, bitwooderUrl} = opts
+        this.#kacheryHubClient = new KacheryHubClient({nodeId, sendKacheryNodeRequest, sendBitwooderResourceRequest, ownerId, nodeLabel, kacheryHubUrl, bitwooderUrl})
         this.#kacheryHubClient.onIncomingPubsubMessage((x: IncomingKacheryHubPubsubMessage) => {
             this._handleKacheryHubPubsubMessage(x)
         })
@@ -72,53 +83,74 @@ class KacheryHubInterface {
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return null
         const options: {downloadUrl: UrlString, channelName: ChannelName}[] = []
-        const checkedBucketUrls = new Set<string>()
+        // const checkedBucketUrls = new Set<string>()
         for (let cm of (nodeConfig.channelMemberships || [])) {
             const channelName = cm.channelName
-            const bucketUri = cm.channelBucketUri
-            if (bucketUri) {
-                const bucketUrl = urlFromUri(bucketUri)
-                if (!checkedBucketUrls.has(bucketUrl)) {
-                    checkedBucketUrls.add(bucketUrl)
-                    const s = sha1.toString()
-                    const url2 = urlString(`${bucketUrl}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`)
-                    const exists = await checkUrlExists(url2)
-                    if (exists) {
-                        options.push({downloadUrl: url2, channelName})
-                    }
+            // const bucketUri = cm.channelBucketUri
+            // if (bucketUri) {
+            //     const bucketUrl = urlFromUri(bucketUri)
+            //     if (!checkedBucketUrls.has(bucketUrl)) {
+            //         checkedBucketUrls.add(bucketUrl)
+            //         const s = sha1.toString()
+            //         const url2 = urlString(`${bucketUrl}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`)
+            //         const exists = await checkUrlExists(url2)
+            //         if (exists) {
+            //             options.push({downloadUrl: url2, channelName})
+            //         }
+            //     }
+            // }
+            const bucketBaseUrl = cm.channelBucketBaseUrl
+            if (bucketBaseUrl) {
+                const s = sha1.toString()
+                const url2 = urlString(`${bucketBaseUrl}/${channelName}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`)
+                const exists = await checkUrlExists(url2)
+                if (exists) {
+                    options.push({downloadUrl: url2, channelName})
                 }
             }
         }
         return options
     }
-    async checkForSubfeedInChannelBuckets(feedId: FeedId, subfeedHash: SubfeedHash): Promise<{numMessages: MessageCount, channelName: ChannelName}[] | null> {
+    async checkForSubfeedInChannelBucket(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName): Promise<MessageCount | null> {
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return null
-        const options: {numMessages: MessageCount, channelName: ChannelName}[] = []
-        const checkedBucketUrls = new Set<string>()
+        // const checkedBucketUrls = new Set<string>()
         for (let cm of (nodeConfig.channelMemberships || [])) {
-            const channelName = cm.channelName
-            const bucketUri = cm.channelBucketUri
-            if (bucketUri) {
-                const bucketUrl = urlFromUri(bucketUri)
-                if (!checkedBucketUrls.has(bucketUrl)) {
-                    checkedBucketUrls.add(bucketUrl)
+            if (channelName === cm.channelName) {
+                // const bucketUri = cm.channelBucketUri
+                // if (bucketUri) {
+                //     const bucketUrl = urlFromUri(bucketUri)
+                //     if (!checkedBucketUrls.has(bucketUrl)) {
+                //         checkedBucketUrls.add(bucketUrl)
+                //         const f = feedId.toString()
+                //         const s = subfeedHash.toString()
+                //         const subfeedPath = `feeds/${f[0]}${f[1]}/${f[2]}${f[3]}/${f[4]}${f[5]}/${f}/subfeeds/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`
+                //         const url2 = urlString(`${bucketUrl}/${subfeedPath}/subfeed.json`)
+                //         const subfeedJson = await downloadJson(url2, {cacheBust: true})
+                //         if (subfeedJson) {
+                //             if (isSubfeedJson(subfeedJson)) {
+                //                 options.push({numMessages: subfeedJson.messageCount, channelName})
+                //             }
+                //         }
+                //     }
+                // }
+                const bucketBaseUrl = cm.channelBucketBaseUrl
+                if (bucketBaseUrl) {
                     const f = feedId.toString()
                     const s = subfeedHash.toString()
                     const subfeedPath = `feeds/${f[0]}${f[1]}/${f[2]}${f[3]}/${f[4]}${f[5]}/${f}/subfeeds/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`
-                    const url2 = urlString(`${bucketUrl}/${subfeedPath}/subfeed.json`)
+                    const url2 = urlString(`${bucketBaseUrl}/${channelName}/${subfeedPath}/subfeed.json`)
                     const subfeedJson = await downloadJson(url2, {cacheBust: true})
                     if (subfeedJson) {
                         if (isSubfeedJson(subfeedJson)) {
-                            options.push({numMessages: subfeedJson.messageCount, channelName})
+                            return subfeedJson.messageCount
                         }
                     }
                 }
             }
         }
-        options.sort((a, b) => (Number(b.numMessages) - Number(a.numMessages))) // sort descending by num. messages
-        return options
+        return null
     }
     async requestFileFromChannels(fileKey: FileKey): Promise<boolean> {
         await this.initialize()
@@ -237,27 +269,27 @@ class KacheryHubInterface {
         }
         this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-provideFeeds`), msg)
     }
-    async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
+    async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName, position: SubfeedPosition) {
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return
-        const channelNames: ChannelName[] = []
-        for (let channelMembership of (nodeConfig.channelMemberships || [])) {
-            if (channelMembership.roles.requestFeeds) {
-                if ((channelMembership.authorization) && (channelMembership.authorization.permissions.requestFeeds)) {
-                    channelNames.push(channelMembership.channelName)
-                }
-            }
-        }
+        // const channelNames: ChannelName[] = []
+        // for (let channelMembership of (nodeConfig.channelMemberships || [])) {
+        //     if (channelMembership.roles.requestFeeds) {
+        //         if ((channelMembership.authorization) && (channelMembership.authorization.permissions.requestFeeds)) {
+        //             channelNames.push(channelMembership.channelName)
+        //         }
+        //     }
+        // }
         const msg: RequestSubfeedMessageBody = {
             type: 'requestSubfeed',
             feedId,
             subfeedHash,
             position
         }
-        for (let channelName of channelNames) {
-            this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-requestFeeds`), msg)
-        }
+        // for (let channelName of channelNames) {
+        this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-requestFeeds`), msg)
+        // }
     }
     async _requestTaskFromChannel(args: {channelName: ChannelName, taskFunctionId: TaskFunctionId, kwargs: TaskKwargs, taskFunctionType: TaskFunctionType, taskId: TaskId, backendId: string | null}) {
         const {channelName, taskFunctionId, kwargs, taskFunctionType, taskId, backendId} = args
@@ -339,63 +371,98 @@ class KacheryHubInterface {
         if (!channelMembership) {
             throw Error(`Not a member of channel: ${channelName}`)
         }
-        const channelBucketUri = channelMembership.channelBucketUri
-        if (!channelBucketUri) {
-            throw Error(`No bucket uri for channel: ${channelName}`)
-        }
-        const channelBucketName = bucketNameFromUri(channelBucketUri)
+        // const channelBucketUri = channelMembership.channelBucketUri
+        // if (!channelBucketUri) {
+        //     throw Error(`No bucket uri for channel: ${channelName}`)
+        // }
+        // const channelBucketName = bucketNameFromUri(channelBucketUri)
         
+        
+        const bucketBaseUrl = channelMembership.channelBucketBaseUrl
+        if (!bucketBaseUrl) {
+            throw Error(`No bucket base URL for channel: ${channelName}`)
+        }
+
         const subfeedJson = await this.loadSubfeedJson(channelName, feedId, subfeedHash)
         if (!subfeedJson) {
             throw Error(`Unable to load subfeed.json for subfeed: ${feedId} ${subfeedHash} ${channelName}`)
         }
+        let end2 = Number(end)
         if (Number(subfeedJson.messageCount) < Number(end)) {
-            throw Error(`Not enough messages for subfeed: ${feedId} ${subfeedHash} ${channelName}`)
+            end = subfeedJson.messageCount
         }
         const subfeedPath = getSubfeedPath(feedId, subfeedHash)
 
-        const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
+        // const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
 
         const ret: SignedSubfeedMessage[] = []
-        for (let i = Number(start); i < Number(end); i++) {
-            const messagePath = `${subfeedPath}/${i}`
-            const messageJson = await client.getObjectJson(messagePath, {cacheBust: false, nodeStats: this.opts.nodeStats, channelName})
+        for (let i = Number(start); i < end2; i++) {
+            // const messagePath = `${subfeedPath}/${i}`
+            const urlMessage = urlString(`${bucketBaseUrl}/${channelName}/${subfeedPath}/${i}`)
+            const messageJson = await downloadJson(urlMessage, {cacheBust: false})
+            // const messageJson = await client.getObjectJson(messagePath, {cacheBust: false, nodeStats: this.opts.nodeStats, channelName})
             if (!messageJson) {
-                throw Error(`Unable to download subfeed message ${messagePath} on ${channelBucketName}`)
+                throw Error(`Unable to download subfeed message ${urlMessage} on ${channelName}`)
             }
             if (!isSignedSubfeedMessage(messageJson)) {
-                throw Error(`Invalid subfeed message ${messagePath} on ${channelBucketName}`)
+                throw Error(`Invalid subfeed message ${urlMessage} on ${channelName}`)
             }
             ret.push(messageJson)
         }
         return ret
     }
-    async getChannelBucketUri(channelName: ChannelName) {
+    // async getChannelBucketUri(channelName: ChannelName) {
+    //     await this.initialize()
+    //     const channelMembership = this._getChannelMembership(channelName)
+    //     if (!channelMembership) throw Error(`Not a member of channel: ${channelName}`)
+    //     const channelBucketUri = channelMembership.channelBucketUri
+    //     if (!channelBucketUri) {
+    //         throw Error(`No bucket uri for channel: ${channelName}`)
+    //     }
+    //     return channelBucketUri
+    // }
+    // async getChannelBucketName(channelName: ChannelName) {
+    //     const channelBucketUri = await this.getChannelBucketUri(channelName)
+    //     const channelBucketName = bucketNameFromUri(channelBucketUri)
+    //     return channelBucketName
+    // }
+    async getChannelResourceId(channelName: ChannelName) {
         await this.initialize()
         const channelMembership = this._getChannelMembership(channelName)
         if (!channelMembership) throw Error(`Not a member of channel: ${channelName}`)
-        const channelBucketUri = channelMembership.channelBucketUri
-        if (!channelBucketUri) {
-            throw Error(`No bucket uri for channel: ${channelName}`)
+        const resourceId = channelMembership.channelResourceId
+        if (!resourceId) {
+            throw Error(`No resource ID for channel: ${channelName}`)
         }
-        return channelBucketUri
+        return resourceId
     }
-    async getChannelBucketName(channelName: ChannelName) {
-        const channelBucketUri = await this.getChannelBucketUri(channelName)
-        const channelBucketName = bucketNameFromUri(channelBucketUri)
-        return channelBucketName
+    async getChannelBucketBaseUrl(channelName: ChannelName) {
+        await this.initialize()
+        const channelMembership = this._getChannelMembership(channelName)
+        if (!channelMembership) throw Error(`Not a member of channel: ${channelName}`)
+        const bucketBaseUrl = channelMembership.channelBucketBaseUrl
+        if (!bucketBaseUrl) {
+            throw Error(`No bucket base URL for channel: ${channelName}`)
+        }
+        return bucketBaseUrl
     }
     async loadSubfeedJson(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
-        const channelBucketName = await this.getChannelBucketName(channelName)
+        // const channelBucketName = await this.getChannelBucketName(channelName)
+        const bucketBaseUrl = await this.getChannelBucketBaseUrl(channelName)
         const subfeedPath = getSubfeedPath(feedId, subfeedHash)
         const subfeedJsonPath = `${subfeedPath}/subfeed.json`
-        const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
-        const subfeedJson = await client.getObjectJson(subfeedJsonPath, {cacheBust: true, nodeStats: this.opts.nodeStats, channelName})
+
+        const url2 = urlString(`${bucketBaseUrl}/${channelName}/${subfeedPath}/subfeed.json`)
+        const subfeedJson = await downloadJson(url2, {cacheBust: true})
+
+
+        // const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
+        // const subfeedJson = await client.getObjectJson(subfeedJsonPath, {cacheBust: true, nodeStats: this.opts.nodeStats, channelName})
         if (!subfeedJson) {
             return null
         }
         if (!isSubfeedJson(subfeedJson)) {
-            throw Error(`Problem with subfeed.json for ${subfeedPath} on ${channelBucketName}`)
+            throw Error(`Problem with subfeed.json for ${subfeedPath} on ${channelName}`)
         }
         return subfeedJson
     }
@@ -454,12 +521,13 @@ class KacheryHubInterface {
             }
         }
         if ((taskFunctionType === 'pure-calculation') || ((taskFunctionType === 'query') && ((queryUseCache) || (queryFallbackToCache)))) {
-            const channelBucketUri = await this.getChannelBucketUri(channelName)
-            const channelBucketUrl = urlFromUri(channelBucketUri)
+            // const channelBucketUri = await this.getChannelBucketUri(channelName)
+            // const channelBucketUrl = urlFromUri(channelBucketUri)
+            const bucketBaseUrl = await this.getChannelBucketBaseUrl(channelName)
             if (taskFunctionType === 'pure-calculation') {
                 if (taskId.toString() !== taskHash.toString()) throw Error('Task ID for pure function is not equal to task hash')
             }
-            const url = urlString(`${channelBucketUrl}/task_results/${channelName}/${pathifyHash(taskHash)}`)
+            const url = urlString(`${bucketBaseUrl}/${channelName}/task_results/${channelName}/${pathifyHash(taskHash)}`)
             const exists = await checkUrlExists(url)
             if (exists) {
                 if (taskFunctionType === 'query') {
@@ -492,9 +560,10 @@ class KacheryHubInterface {
 
         let taskResultUrl: UrlString | undefined
         if ((taskFunctionType === 'pure-calculation') || (taskFunctionType === 'query')) {
-            const channelBucketUri = await this.getChannelBucketUri(channelName)
-            const channelBucketUrl = urlFromUri(channelBucketUri)
-            taskResultUrl = urlString(`${channelBucketUrl}/task_results/${channelName}/${pathifyHash(taskHash)}`)
+            // const channelBucketUri = await this.getChannelBucketUri(channelName)
+            // const channelBucketUrl = urlFromUri(channelBucketUri)
+            const bucketBaseUrl = await this.getChannelBucketBaseUrl(channelName)
+            taskResultUrl = urlString(`${bucketBaseUrl}/${channelName}/task_results/${channelName}/${pathifyHash(taskHash)}`)
         }
         else {
             taskResultUrl = undefined
@@ -611,10 +680,10 @@ class KacheryHubInterface {
                 console.warn(`Unexpected pubsub channel for requestFile: ${x.pubsubChannelName}`)
                 return
             }
-            const cm = this._getChannelMembership(x.channelName)
-            if (!cm) return
-            const bucketUri = cm.channelBucketUri
-            if (!bucketUri) return
+            // const cm = this._getChannelMembership(x.channelName)
+            // if (!cm) return
+            // const bucketUri = cm.channelBucketUri
+            // if (!bucketUri) return
             this.#incomingFileRequestCallbacks.forEach(cb => {
                 cb({fileKey: msg.fileKey, channelName: x.channelName, fromNodeId: x.fromNodeId})
             })

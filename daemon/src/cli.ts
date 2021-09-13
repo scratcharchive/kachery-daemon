@@ -98,6 +98,11 @@ function main() {
           type: 'string',
           default: 'https://kacheryhub.org'
         })
+        y.option('bitwooder-url', {
+          describe: 'Url for the bitwooder app',
+          type: 'string',
+          default: 'https://bitwooder.net'
+        })
         return y
       },
       handler: async (argv) => {
@@ -136,6 +141,10 @@ function main() {
         if (!kacheryHubUrl) throw Error('kachery-hub-url not set')
         if (!isString(kacheryHubUrl)) throw Error('kachery-hub-url is not a string')
 
+        const bitwooderUrl = argv['bitwooder-url'] || ''
+        if (!bitwooderUrl) throw Error('bitwooder-url not set')
+        if (!isString(bitwooderUrl)) throw Error('bitwooder-url is not a string')
+
         await testSignatures()
 
         startDaemon({
@@ -154,7 +163,8 @@ function main() {
                 clientAuth: true,
                 cleanCache: true
             },
-            kacheryHubUrl
+            kacheryHubUrl,
+            bitwooderUrl
           }
         })
       }
