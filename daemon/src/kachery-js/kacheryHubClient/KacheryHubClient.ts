@@ -154,18 +154,15 @@ class KacheryHubClient {
         }
         await this._sendRequest(reqBody)
     }
-    async createSignedFileUploadUrl(a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) {
+    async _createSignedUploadUrl(a: {channelName: ChannelName, filePath: string, size: ByteCount}) {
+        const {channelName, filePath, size} = a
         if (!this.opts.ownerId) throw Error('No owner ID in createSignedFileUploadUrl')
-        const {channelName, sha1, size} = a
-
+        
         const channelConfig = await this.fetchChannelConfig(channelName)
         const resourceId = channelConfig.bitwooderResourceId
         if (!resourceId) {
             throw Error('No bitwooderResourceId in channel config (createSignedFileUploadUrl)')
         }
-
-        const s = sha1
-        const filePath = `${channelName}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`
         
         const {cert: bitwooderCert, key: bitwooderCertKey} = await this.getBitwooderCertForChannel(channelName)
 
@@ -173,7 +170,7 @@ class KacheryHubClient {
             type: 'getUploadUrl' as 'getUploadUrl',
             expires: Date.now() + minuteMsec * 1,
             resourceId,
-            filePath, 
+            filePath: `${channelName}/${filePath}`, 
             size: Number(size)
         }
 
@@ -196,6 +193,15 @@ class KacheryHubClient {
             throw Error('Unexpected response type for getUploadUrl')
         }
         return urlString(resp.uploadUrl)
+    }
+    async createSignedFileUploadUrl(a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) {
+        if (!this.opts.ownerId) throw Error('No owner ID in createSignedFileUploadUrl')
+        const {channelName, sha1, size} = a
+
+        const s = sha1
+        const filePath = `sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`
+
+        return await this._createSignedUploadUrl({channelName, filePath, size})
         
         // const {channelName, sha1, size} = a
         // const reqBody: CreateSignedFileUploadUrlRequestBody = {
@@ -214,6 +220,8 @@ class KacheryHubClient {
     }
     async createSignedSubfeedMessageUploadUrls(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
         if (!this.opts.ownerId) throw Error('No owner ID in createSignedSubfeedMessageUploadUrls')
+
+        const urls: string[] = []
         const {channelName, feedId, subfeedHash, messageNumberRange} = a
         const reqBody: CreateSignedSubfeedMessageUploadUrlRequestBody = {
             type: 'createSignedSubfeedMessageUploadUrl',
