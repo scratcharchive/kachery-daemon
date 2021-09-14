@@ -8,6 +8,7 @@ import { sleepMsec } from '../../../kachery-js/util/util';
 import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, isNull, isNumber, isOneOf, isString, localFilePath, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString, _validateObject } from '../../../kachery-js/types/kacheryTypes';
 import randomAlphaString from '../../../kachery-js/util/randomAlphaString';
 import { NodeStats } from '../../../kachery-js';
+import logger from "winston";;
 
 type LinkObject = {
     path: string,
@@ -484,7 +485,7 @@ export class KacheryStorageManager {
             const x = await readJsonFile(linkPath.toString())
             if (!x) return {path: null, size: null}
             if (!isLinkObject(x)) {
-                console.warn(`Unexpected. Not a link object: ${linkPath}`)
+                logger.warn(`Unexpected. Not a link object: ${linkPath}`)
                 return {path: null, size: null}
             }
             const path = x.path

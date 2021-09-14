@@ -1,3 +1,4 @@
+import logger from "winston";;
 import WebSocket from 'ws';
 import { WebSocketInterface, WebSocketServerInterface } from '../../kachery-js/core/ExternalInterface';
 import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from '../../kachery-js/types/kacheryTypes';
@@ -7,7 +8,7 @@ const webSocketInterfaceFromWebSocket = (ws: WebSocket): WebSocketInterface => {
         ws.on('message', (buf) => {
             /* istanbul ignore next */
             if (!isBuffer(buf)) {
-                console.warn('Incoming message is not a Buffer')
+                logger.warn('Incoming message is not a Buffer')
                 ws.close()
                 return
             }

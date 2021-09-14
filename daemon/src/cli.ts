@@ -7,12 +7,15 @@ import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
 import startDaemon from './startDaemon';
+import { getStorageDir } from 'storageDir';
+import 'loggerSetup';
+import logger from 'winston'
 
 // Thanks: https://stackoverflow.com/questions/4213351/make-node-js-not-exit-on-error
 process.on('uncaughtException', function (err) {
   // This is important because utp-native was sporadically giving the following error and crashing:
-  console.warn(err.stack);
-  console.log('Uncaught exception: ', err);
+  logger.warn(err.stack);
+  logger.warn('Uncaught exception: ', err);
 });
 
 class CLIError extends Error {
@@ -115,6 +118,9 @@ function main() {
           }
           else return undefined
         })()
+        logger.info(`Using daemon API port: ${daemonApiPort}`)
+        logger.info(`Using label: ${label}`)
+        logger.info(`Using owner ID: ${ownerId}`)
         
         const verbose = Number(argv.verbose || 0)
         const authGroup: string | null = argv['auth-group'] ? argv['auth-group'] + '' : null 
@@ -123,30 +129,30 @@ function main() {
           throw new CLIError(`Invalid daemon api port: ${daemonApiPort}`);
         }
 
-        let storageDir = process.env['KACHERY_STORAGE_DIR'] || ''
-        if (!storageDir) {
-          storageDir = `${os.homedir()}/kachery-storage`
-            console.warn(`Using ${storageDir} for storage. Set KACHERY_STORAGE_DIR to override.`);
-            if (!fs.existsSync(storageDir)) {
-              fs.mkdirSync(storageDir)
-            }
-        }
+        const storageDir = getStorageDir()
         if ((!fs.lstatSync(storageDir).isDirectory()) && (!fs.lstatSync(storageDir).isSymbolicLink)) {
           throw new CLIError(`Storage path is not a directory: ${storageDir}`)
-        }        
+        }
+        logger.info(`Using storage: ${storageDir}`)
 
+        logger.info('Set up external interface: started')
         const externalInterface = realExternalInterface(localFilePath(storageDir))
+        logger.info('Set up external interface: finished')
 
         const kacheryHubUrl = argv['kachery-hub-url'] || ''
         if (!kacheryHubUrl) throw Error('kachery-hub-url not set')
         if (!isString(kacheryHubUrl)) throw Error('kachery-hub-url is not a string')
+        logger.info(`Kachery hub url: ${kacheryHubUrl}`)
 
         const bitwooderUrl = argv['bitwooder-url'] || ''
         if (!bitwooderUrl) throw Error('bitwooder-url not set')
         if (!isString(bitwooderUrl)) throw Error('bitwooder-url is not a string')
+        logger.info(`Bitwooder URL: ${bitwooderUrl}`)
 
+        logger.info('Signature test: starting')
         await testSignatures()
-
+        logger.info('Signature test: passed')
+        logger.warn('Warning')
         startDaemon({
           verbose,
           daemonApiPort,

@@ -1,6 +1,7 @@
 // import { scaledDurationMsec, _validateObject } from "../common/types/kacheryTypes";
 import child_process from 'child_process';
 import fs from 'fs';
+import logger from "winston";;
 import { userInfo } from 'os';
 import { KacheryNode } from '../kachery-js';
 import { elapsedSince, nowTimestamp, scaledDurationMsec } from "../kachery-js/types/kacheryTypes";
@@ -27,7 +28,6 @@ export default class ClientAuthService {
             
             const previous = this.#currentClientAuthCode
             this.#currentClientAuthCode = createClientAuthCode()
-            console.info(`${nowTimestamp()}: Setting client auth code ${this.#currentClientAuthCode}`)
             const clientAuthPath = this.#node.kacheryStorageManager().storageDir() + '/client-auth'
             const clientAuthPathTmp = `${clientAuthPath}.tmp.${randomAlphaString(6)}`
             await fs.promises.writeFile(clientAuthPathTmp, this.#currentClientAuthCode, {mode: fs.constants.S_IRUSR | fs.constants.S_IRGRP | fs.constants.S_IWUSR})
@@ -38,8 +38,8 @@ export default class ClientAuthService {
                     child_process.execSync(`chown ${user}:${group} ${clientAuthPathTmp}`);
                 }
                 catch(e) {
-                    console.warn(`Problem setting ownership of client auth file. Perhaps you do not belong to group "${group}".`, e.message)
-                    console.warn('ABORTING')
+                    logger.error(`Problem setting ownership of client auth file. Perhaps you do not belong to group "${group}".`, e.message)
+                    logger.error('ABORTING')
                     process.exit(1)
                 }
             }
@@ -49,7 +49,6 @@ export default class ClientAuthService {
             await renameAndCheck2(clientAuthPathTmp, clientAuthPath, this.#currentClientAuthCode)
             // await fs.promises.rename(clientAuthPathTmp, clientAuthPath)
             this.#node.setClientAuthCode(this.#currentClientAuthCode, previous)
-            console.info(`${nowTimestamp()}: Done setting client auth code ${this.#currentClientAuthCode}`)
 
             await sleepMsec(intervalMsec, () => {return !this.#halted})
         }

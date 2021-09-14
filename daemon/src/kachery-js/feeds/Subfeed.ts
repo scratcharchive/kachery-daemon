@@ -86,8 +86,7 @@ class Subfeed {
                         console.warn(`Problem loading signed subfeed messages from channel ${this.channelName} ${this.feedId} ${this.subfeedHash} ${start0} ${numM}: ${err.message}`)
                     }
                     if (msgs) {
-                        console.info(`Loaded ${msgs.length} subfeed messages from channel ${this.channelName}`)
-                        this.#localSubfeedSignedMessagesManager.appendSignedMessages(msgs)
+                        this.#localSubfeedSignedMessagesManager.addSignedMessages(msgs)
                         this._scheduleTriggerNewMessageCallbacks()
                     }
                 }
@@ -229,22 +228,22 @@ class Subfeed {
             messageNumber ++;
         }
         // CHAIN:append_messages:step(4)
-        await this.appendSignedMessages(signedMessagesToAppend)
+        await this.addSignedMessages(signedMessagesToAppend)
     }
-    async appendSignedMessages(signedMessages: SignedSubfeedMessage[]) {
+    async addSignedMessages(signedMessages: SignedSubfeedMessage[]) {
         if (!this.#localSubfeedSignedMessagesManager.isInitialized()) {
             /* istanbul ignore next */
-            throw Error('signed messages not initialized. Perhaps appendSignedMessages was called before subfeed was initialized.');
+            throw Error('signed messages not initialized. Perhaps addSignedMessages was called before subfeed was initialized.');
         }
         if (signedMessages.length === 0)
             return;
-        // it's possible that we have already appended some of these messages. Let's check
+        // it's possible that we have already added some of these messages. Let's check
         if (signedMessages[0].body.messageNumber < messageCountToNumber(this.#localSubfeedSignedMessagesManager.getNumMessages())) {
             signedMessages = signedMessages.slice(messageCountToNumber(this.#localSubfeedSignedMessagesManager.getNumMessages()) - signedMessages[0].body.messageNumber)
         }
         if (signedMessages.length === 0)
             return;
-        const signedMessagesToAppend: SignedSubfeedMessage[] = []
+        const signedMessagesToAdd: SignedSubfeedMessage[] = []
         let previousSignature;
         if (Number(this.#localSubfeedSignedMessagesManager.getNumMessages()) > 0) {
             previousSignature = this.#localSubfeedSignedMessagesManager.getSignedMessage(Number(this.#localSubfeedSignedMessagesManager.getNumMessages()) - 1).signature;
@@ -254,22 +253,21 @@ class Subfeed {
             const body = signedMessage.body;
             const signature = signedMessage.signature;
             if (!await verifySignature(body as any as JSONObject, this.#publicKey, signature)) {
-                console.warn(JSON.stringify(signedMessage, null, 4))
-                throw Error(`Error verifying signature when appending signed message for: ${this.feedId} ${this.subfeedHash} ${signature}`);
+                throw Error(`Error verifying signature when adding signed message for: ${this.feedId} ${this.subfeedHash} ${signature}`);
             }
             if ((body.previousSignature || null) !== (previousSignature || null)) {
-                throw Error(`Error in previousSignature when appending signed message for: ${this.feedId} ${this.subfeedHash} ${body.previousSignature} <> ${previousSignature}`);
+                throw Error(`Error in previousSignature when adding signed message for: ${this.feedId} ${this.subfeedHash} ${body.previousSignature} <> ${previousSignature}`);
             }
             if (body.messageNumber !== messageNumber) {
                 // problem here
-                throw Error(`Error in messageNumber when appending signed message for: ${this.feedId} ${this.subfeedHash} ${body.messageNumber} <> ${messageNumber}`);
+                throw Error(`Error in messageNumber when adding signed message for: ${this.feedId} ${this.subfeedHash} ${body.messageNumber} <> ${messageNumber}`);
             }
             previousSignature = signedMessage.signature;
             messageNumber ++;
-            signedMessagesToAppend.push(signedMessage)
+            signedMessagesToAdd.push(signedMessage)
         }
         // CHAIN:append_messages:step(5)
-        await this.#localSubfeedSignedMessagesManager.appendSignedMessages(signedMessagesToAppend);
+        await this.#localSubfeedSignedMessagesManager.addSignedMessages(signedMessagesToAdd);
         this._scheduleTriggerNewMessageCallbacks()
     }
     _scheduleTriggerNewMessageCallbacks() {

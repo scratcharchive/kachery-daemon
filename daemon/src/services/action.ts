@@ -1,6 +1,4 @@
-const _globalData: {verbose: number} = {
-    verbose: 0
-}
+import logger from "winston";
 
 export const action = async (
     actionName: string,
@@ -9,10 +7,8 @@ export const action = async (
     onError: ((err: Error) => Promise<void>) | null
 ) => {
     try {
-        if (_globalData.verbose > 0) {
-            /* istanbul ignore next */
-            console.info(`${actionName}`);
-        }
+        /* istanbul ignore next */
+        logger.debug(`ACTION: ${actionName}`);
         await operation()
     }
     catch(err) {
@@ -22,7 +18,7 @@ export const action = async (
         }
         else {
             /* istanbul ignore next */
-            console.warn(`@@@@@@@@@@@@@@@@@@ Error in ${actionName}: ${err.message}`)
+            logger.error(`Error in ${actionName}: ${err.message}`)
         }
     }
 }

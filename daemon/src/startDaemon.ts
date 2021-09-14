@@ -14,6 +14,7 @@ import DisplayStateService from './services/DisplayStateService';
 import KacheryHubService from './services/KacheryHubService';
 import CleanCacheService from './services/CleanCacheService';
 import { BitwooderResourceRequest, BitwooderResourceResponse } from 'kachery-js/types/BitwooderResourceRequest';
+import logger from "winston";;
 
 export interface StartDaemonOpts {
     authGroup: string | null,
@@ -108,7 +109,7 @@ const startDaemon = async (args: {
     const daemonApiServer = new DaemonApiServer(kNode, externalInterface, { verbose });
     if (opts.services.daemonServer && (daemonApiPort !== null)) {
         await daemonApiServer.listen(daemonApiPort);
-        console.info(`Daemon http server listening on port ${daemonApiPort}`)
+        logger.info(`Daemon http server listening on port ${daemonApiPort}`)
     }
 
     // start the other services

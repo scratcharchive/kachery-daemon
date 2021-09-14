@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import logger from "winston";
 import nacl from 'tweetnacl'
 import { isPrivateKeyHex, isPublicKeyHex, isSignature, JSONValue, KeyPair, PrivateKey, PrivateKeyHex, PublicKey, PublicKeyHex, Sha1Hash, Signature } from "../types/kacheryTypes"
 
@@ -53,7 +54,7 @@ export const verifySignature = async (msg: JSONValue, publicKey: PublicKey, sign
 const legacyVerifyMessage = async (msg: JSONValue, publicKey: PublicKey, signature: Signature): Promise<boolean> => {
     // crypto.verify is not available in the browser, and I can't get the other crypto functions to work properly
     if (!crypto.verify) {
-        console.warn('Problem verifying signature, and unable to use crypto.verify (in verifySignature)')
+        logger.warn('Problem verifying signature, and unable to use crypto.verify (in verifySignature)')
         return false
     }
     const verified = crypto.verify(null, Buffer.from(stringifyDeterministicWithSortedKeys(msg)), publicKey.toString(), Buffer.from(signature.toString(), 'hex'))
@@ -83,7 +84,7 @@ export const testSignatures = async () => {
     const signature = await signMessage(msg, keyPair)
     const verified = await verifySignature(msg, keyPair.publicKey, signature)
     if (!verified) throw Error('Problem verifying signature in testSignatures')
-    console.info(`Passed signature test`)
+    logger.info(`Passed signature test`)
 }
 
 export const testKeyPair = async (keyPair: KeyPair) => {
@@ -91,7 +92,7 @@ export const testKeyPair = async (keyPair: KeyPair) => {
     const signature = await signMessage(msg, keyPair)
     const verified = await verifySignature(msg, keyPair.publicKey, signature)
     if (!verified) throw Error('Problem verifying signature in testKeyPair')
-    console.info(`Passed testKeyPair`)
+    logger.info(`Passed testKeyPair`)
 }
 
 export const privateKeyToHex = (privateKey: PrivateKey): PrivateKeyHex => {

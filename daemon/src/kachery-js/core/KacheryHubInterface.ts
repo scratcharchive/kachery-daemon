@@ -1,11 +1,12 @@
 import axios from "axios";
 import { BitwooderResourceRequest, BitwooderResourceResponse } from "kachery-js/types/BitwooderResourceRequest";
+import logger from "winston";
 import KacheryHubClient, { IncomingKacheryHubPubsubMessage } from "../kacheryHubClient/KacheryHubClient";
 import IncomingTaskManager, { ProbeTaskFunctionsResult } from "../tasks/IncomingTaskManager";
 import OutgoingTaskManager from "../tasks/outgoingTaskManager";
 import { NodeConfig, RegisteredTaskFunction, RequestedTask } from "../types/kacheryHubTypes";
 import { KacheryNodeRequestBody } from "../types/kacheryNodeRequestTypes";
-import { ByteCount, channelName, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, scaledDurationMsec, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskFunctionType, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "../types/kacheryTypes";
+import { ByteCount, channelName, ChannelName, DurationMsec, durationMsecToNumber, elapsedSince, errorMessage, ErrorMessage, FeedId, FileKey, fileKeyHash, isMessageCount, isSignedSubfeedMessage, JSONValue, messageCount, MessageCount, NodeId, NodeLabel, nowTimestamp, pathifyHash, pubsubChannelName, PubsubChannelName, scaledDurationMsec, Sha1Hash, Signature, SignedSubfeedMessage, SubfeedHash, SubfeedPosition, TaskFunctionId, TaskFunctionType, TaskId, TaskKwargs, TaskStatus, toTaskId, urlString, UrlString, UserId, _validateObject } from "../types/kacheryTypes";
 import { KacheryHubPubsubMessageBody, KacheryHubPubsubMessageData, ProbeTaskFunctionsBody, RequestFileMessageBody, RequestSubfeedMessageBody, RequestTaskMessageBody, UpdateSubfeedMessageCountMessageBody, UpdateTaskStatusMessageBody, UploadFileStatusMessageBody } from "../types/pubsubMessages";
 import cacheBust from "../util/cacheBust";
 import computeTaskHash from "../util/computeTaskHash";
@@ -54,6 +55,7 @@ class KacheryHubInterface {
         const {nodeId, sendKacheryNodeRequest, sendBitwooderResourceRequest, ownerId, nodeLabel, kacheryHubUrl, bitwooderUrl} = opts
         this.#kacheryHubClient = new KacheryHubClient({nodeId, sendKacheryNodeRequest, sendBitwooderResourceRequest, ownerId, nodeLabel, kacheryHubUrl, bitwooderUrl})
         this.#kacheryHubClient.onIncomingPubsubMessage((x: IncomingKacheryHubPubsubMessage) => {
+            logger.debug(`Incoming pubsub message ${x.channelName} ${x.pubsubChannelName} ${x.message.type}`)
             this._handleKacheryHubPubsubMessage(x)
         })
         this.#incomingTaskManager = new IncomingTaskManager()
@@ -72,13 +74,16 @@ class KacheryHubInterface {
                 })
             })
         }
+        logger.info('KacheryHubInterface: initializing')
         this.#initializing = true
         await this._doInitialize()
+        logger.info('KacheryHubInterface: done initializing')
         this.#initialized = true
         this.#initializing = false
         this.#onInitializedCallbacks.forEach(cb => {cb()})
     }
     async checkForFileInChannelBuckets(sha1: Sha1Hash): Promise<{downloadUrl: UrlString, channelName: ChannelName}[] | null> {
+        logger.debug(`KacheryHubInterface: checkForFileInChannelBuckets ${sha1}`)
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return null
@@ -112,6 +117,7 @@ class KacheryHubInterface {
         return options
     }
     async checkForSubfeedInChannelBucket(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName): Promise<MessageCount | null> {
+        logger.debug(`KacheryHubInterface: checkForSubfeedInChannelBucket ${channelName} ${feedId}/${subfeedHash}`)
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return null
@@ -153,6 +159,7 @@ class KacheryHubInterface {
         return null
     }
     async requestFileFromChannels(fileKey: FileKey): Promise<boolean> {
+        logger.debug(`KacheryHubInterface: requestFileFromChannels ${fileKey.sha1}`)
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return false
@@ -237,6 +244,7 @@ class KacheryHubInterface {
         this.#updateSubfeedMessageCountCallbacks.push(callback)
     }
     async sendUploadFileStatusMessage(args: {channelName: ChannelName, fileKey: FileKey, status: 'started' | 'finished'}) {
+        logger.debug(`KacheryHubInterface: sendUploadFileStatusMessage ${args.channelName} ${args.status}`)
         const {channelName, fileKey, status} = args
         await this.initialize()
         const msg: UploadFileStatusMessageBody = {
@@ -251,15 +259,23 @@ class KacheryHubInterface {
         return this.#nodeConfig
     }
     async createSignedFileUploadUrl(a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) {
+        logger.debug(`KacheryHubInterface: createSignedFileUploadUrl`)
         return this.#kacheryHubClient.createSignedFileUploadUrl(a)
     }
-    async createSignedSubfeedMessageUploadUrls(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number]}) {
+    async createSignedSubfeedJsonUploadUrl(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, size: ByteCount}) {
+        logger.debug(`KacheryHubInterface: createSignedSubfeedJsonUploadUrl`)
+        return this.#kacheryHubClient.createSignedSubfeedJsonUploadUrl(a)
+    }
+    async createSignedSubfeedMessageUploadUrls(a: {channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageNumberRange: [number, number], messageSizes: ByteCount[]}) {
+        logger.debug(`KacheryHubInterface: createSignedSubfeedMessageUploadUrls`)
         return this.#kacheryHubClient.createSignedSubfeedMessageUploadUrls(a)
     }
     async createSignedTaskResultUploadUrl(a: {channelName: ChannelName, taskId: TaskId, size: ByteCount}) {
+        logger.debug(`KacheryHubInterface: createSignedTaskResultUploadUrl`)
         return this.#kacheryHubClient.createSignedTaskResultUploadUrl(a)
     }
     async reportToChannelSubfeedMessagesAdded(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, numMessages: MessageCount) {
+        logger.debug(`KacheryHubInterface: reportToChannelSubfeedMessagesAdded`)
         await this.initialize()
         const msg: UpdateSubfeedMessageCountMessageBody = {
             type: 'updateSubfeedMessageCount',
@@ -270,6 +286,7 @@ class KacheryHubInterface {
         this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-provideFeeds`), msg)
     }
     async subscribeToRemoteSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName, position: SubfeedPosition) {
+        logger.debug(`KacheryHubInterface: subscribeToRemoteSubfeed`)
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) return
@@ -324,6 +341,7 @@ class KacheryHubInterface {
         this._publishMessageToPubsubChannel(channelName, pubsubChannelName(`${channelName}-requestTasks`), msg)
     }
     async probeTaskFunctionsFromChannel(args: {channelName: ChannelName, taskFunctionIds: TaskFunctionId[], backendId: string | null}) {
+        logger.debug(`KacheryHubInterface: probeTaskFunctionsFromChannel`)
         const {channelName, taskFunctionIds, backendId} = args
         await this.initialize()
         const nodeConfig = this.#nodeConfig
@@ -362,6 +380,7 @@ class KacheryHubInterface {
 	    return this.#outgoingTaskManager.onRegisteredTaskFunctionsChanged(cb)
     }
     async downloadSignedSubfeedMessages(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, start: MessageCount, end: MessageCount): Promise<SignedSubfeedMessage[]> {
+        logger.debug(`KacheryHubInterface: downloadSignedSubfeedMessages`)
         await this.initialize()
         const nodeConfig = this.#nodeConfig
         if (!nodeConfig) {
@@ -447,6 +466,7 @@ class KacheryHubInterface {
         return bucketBaseUrl
     }
     async loadSubfeedJson(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
+        logger.debug(`KacheryHubInterface: Loading subfeed.json`)
         // const channelBucketName = await this.getChannelBucketName(channelName)
         const bucketBaseUrl = await this.getChannelBucketBaseUrl(channelName)
         const subfeedPath = getSubfeedPath(feedId, subfeedHash)
@@ -454,8 +474,6 @@ class KacheryHubInterface {
 
         const url2 = urlString(`${bucketBaseUrl}/${channelName}/${subfeedPath}/subfeed.json`)
         const subfeedJson = await downloadJson(url2, {cacheBust: true})
-
-
         // const client = new GoogleObjectStorageClient({bucketName: channelBucketName})
         // const subfeedJson = await client.getObjectJson(subfeedJsonPath, {cacheBust: true, nodeStats: this.opts.nodeStats, channelName})
         if (!subfeedJson) {
@@ -464,9 +482,11 @@ class KacheryHubInterface {
         if (!isSubfeedJson(subfeedJson)) {
             throw Error(`Problem with subfeed.json for ${subfeedPath} on ${channelName}`)
         }
+        logger.debug(`KacheryHubInterface: Got subfeedJson: ${subfeedJson.messageCount} messages`)
         return subfeedJson
     }
     async updateTaskStatus(args: {channelName: ChannelName, taskId: TaskId, status: TaskStatus, errorMessage: ErrorMessage | undefined}) {
+        logger.debug(`KacheryHubInterface: updateTaskStatus`)
         const { channelName, taskId, status, errorMessage } = args
         await this.initialize()
         const nodeConfig = this.#nodeConfig
@@ -498,9 +518,11 @@ class KacheryHubInterface {
         this._publishMessageToPubsubChannel(channelName, pcn, msg)
     }
     async registerTaskFunctions(args: {taskFunctions: RegisteredTaskFunction[], backendId: string | null, timeoutMsec: DurationMsec}): Promise<RequestedTask[]> {
+        logger.debug(`KacheryHubInterface: registerTaskFunctions`)
         return this.#incomingTaskManager.registerTaskFunctions(args)
     }
     createTaskIdForTask(args: {taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, taskFunctionType: TaskFunctionType}) {
+        logger.debug(`KacheryHubInterface: createTaskIdForTask`)
         const { taskFunctionId, taskKwargs, taskFunctionType } = args
         if (taskFunctionType === 'pure-calculation') {
             const taskHash = computeTaskHash(taskFunctionId, taskKwargs)
@@ -511,6 +533,7 @@ class KacheryHubInterface {
         }
     }
     async requestTaskFromChannel(args: {channelName: ChannelName, backendId: null | string, taskId: TaskId, taskFunctionId: TaskFunctionId, taskKwargs: TaskKwargs, taskFunctionType: TaskFunctionType, timeoutMsec: DurationMsec, queryUseCache?: boolean, queryFallbackToCache?: boolean}): Promise<RequestTaskResult> {
+        logger.debug(`KacheryHubInterface: requestTaskFromChannel`)
         await this.initialize()
 
         const { channelName, backendId, taskId, taskFunctionId, taskKwargs, taskFunctionType, timeoutMsec, queryUseCache, queryFallbackToCache } = args
@@ -581,6 +604,7 @@ class KacheryHubInterface {
         }
     }
     async waitForTaskResult(args: {channelName: ChannelName, taskId: TaskId, taskResultUrl: UrlString | undefined, timeoutMsec: DurationMsec, taskFunctionType: TaskFunctionType}): Promise<WaitForTaskResult> {
+        logger.debug(`KacheryHubInterface: waitForTaskResult`)
         const { channelName, taskId, taskResultUrl, timeoutMsec, taskFunctionType } = args
 
         const t = this.#outgoingTaskManager.outgoingTask(channelName, taskId)
@@ -660,6 +684,7 @@ class KacheryHubInterface {
         return x
     }
     async _publishMessageToPubsubChannel(channelName: ChannelName, pubsubChannelName: PubsubChannelName, messageBody: KacheryHubPubsubMessageBody) {
+        logger.debug(`Publishing message: ${channelName} ${pubsubChannelName} ${messageBody.type}`)
         const pubsubClient = this.#kacheryHubClient.getPubsubClientForChannel(channelName)
         if (pubsubClient) {
             const pubsubChannel = pubsubClient.getChannel(pubsubChannelName)
@@ -677,7 +702,7 @@ class KacheryHubInterface {
         const msg = x.message
         if (msg.type === 'requestFile') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-requestFiles`)) {
-                console.warn(`Unexpected pubsub channel for requestFile: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for requestFile: ${x.pubsubChannelName}`)
                 return
             }
             // const cm = this._getChannelMembership(x.channelName)
@@ -690,7 +715,7 @@ class KacheryHubInterface {
         }
         else if (msg.type === 'requestSubfeed') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-requestFeeds`)) {
-                console.warn(`Unexpected pubsub channel for requestSubfeed: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for requestSubfeed: ${x.pubsubChannelName}`)
                 return
             }
             const nodeConfig = this.#nodeConfig
@@ -706,7 +731,7 @@ class KacheryHubInterface {
         }
         else if (msg.type === 'updateSubfeedMessageCount') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-provideFeeds`)) {
-                console.warn(`Unexpected pubsub channel for updateSubfeedMessageCount: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for updateSubfeedMessageCount: ${x.pubsubChannelName}`)
                 return
             }
             this.#updateSubfeedMessageCountCallbacks.forEach(cb => {
@@ -715,21 +740,21 @@ class KacheryHubInterface {
         }
         else if (msg.type === 'updateTaskStatus') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-provideTasks`)) {
-                console.warn(`Unexpected pubsub channel for updateTaskStatus: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for updateTaskStatus: ${x.pubsubChannelName}`)
                 return
             }
             this.#outgoingTaskManager.updateTaskStatus({channelName: x.channelName, taskId: msg.taskId, status: msg.status, errMsg: msg.errorMessage})
         }
         else if (msg.type === 'requestTask') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-requestTasks`)) {
-                console.warn(`Unexpected pubsub channel for requestTask: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for requestTask: ${x.pubsubChannelName}`)
                 return
             }
             this.#incomingTaskManager.requestTask({channelName: x.channelName, taskId: msg.taskId, taskFunctionId: msg.taskFunctionId, taskKwargs: msg.taskKwargs, taskFunctionType: msg.taskFunctionType, backendId: msg.backendId || null})
         }
         else if (msg.type === 'probeTaskFunctions') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-requestTasks`)) {
-                console.warn(`Unexpected pubsub channel for probeTaskFunctions: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for probeTaskFunctions: ${x.pubsubChannelName}`)
                 return
             }
             this.#incomingTaskManager.probeTaskFunctions({channelName: x.channelName, backendId: msg.backendId || null, taskFunctionIds: msg.taskFunctionIds}).then((result: ProbeTaskFunctionsResult) => {
@@ -743,7 +768,7 @@ class KacheryHubInterface {
         }
         else if (msg.type === 'reportRegisteredTaskFunctions') {
             if (x.pubsubChannelName !== pubsubChannelName(`${x.channelName}-provideTasks`)) {
-                console.warn(`Unexpected pubsub channel for reportRegisteredTaskFunctions: ${x.pubsubChannelName}`)
+                logger.warn(`Unexpected pubsub channel for reportRegisteredTaskFunctions: ${x.pubsubChannelName}`)
                 return
             }
             this.#outgoingTaskManager.reportRegisteredTaskFunctions(x.channelName, msg.registeredTaskFunctions)
@@ -754,8 +779,8 @@ class KacheryHubInterface {
         try {
             nodeConfig = await this.#kacheryHubClient.fetchNodeConfig()
         }
-        catch(err) {
-            console.warn('Problem fetching node config.', err.message)
+        catch(err: any) {
+            logger.warn('Problem fetching node config.', err.message)
             return
         }
         // initialize the pubsub clients so we can subscribe to the pubsub channels

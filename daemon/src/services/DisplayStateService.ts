@@ -3,6 +3,7 @@ import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unsca
 import { formatByteCount, sleepMsec } from "../kachery-js/util/util";
 import { KacheryNode } from '../kachery-js';
 import VERSION from "../daemonVersion"
+import logger from "winston";
 
 export default class DisplayStateService {
     #node: KacheryNode

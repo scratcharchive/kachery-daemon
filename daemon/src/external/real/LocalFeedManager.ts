@@ -267,12 +267,9 @@ export default class LocalFeedManager {
         // Read the messages file
         return await this.#localFeedsDatabase.getSignedSubfeedMessages(feedId, subfeedHash)
     }
-    async appendSignedMessagesToSubfeed(position: number, feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) {
+    async addSignedMessagesToSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) {
         if (messages.length === 0) return
-        if (messages[0].body.messageNumber !== position) {
-            throw Error(`Unexpected message number in appendSignedMessagesToSubfeed: ${messages[0].body.messageNumber} <> ${position}`)
-        }
-        await this.#localFeedsDatabase.appendSignedMessagesToSubfeed(feedId, subfeedHash, messages)
+        await this.#localFeedsDatabase.addSignedMessagesToSubfeed(feedId, subfeedHash, messages)
     }
 }
 

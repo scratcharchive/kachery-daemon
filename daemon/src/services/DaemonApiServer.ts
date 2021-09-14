@@ -13,6 +13,7 @@ import { KacheryNode } from '../kachery-js';
 import { loadFile } from '../kachery-js/core/loadFile';
 import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskRegisterTaskFunctionsRequest, isTaskRequestTaskRequest, isTaskUpdateTaskStatusRequest, isTaskWaitForTaskResultRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskRegisterTaskFunctionsResponse, TaskRequestTaskResponse, TaskUpdateTaskStatusResponse, TaskWaitForTaskResultResponse } from './daemonApiTypes';
 import { RequestedTask } from '../kachery-js/types/kacheryHubTypes';
+import logger from "winston";;
 
 export default class DaemonApiServer {
     #node: KacheryNode
@@ -524,10 +525,10 @@ export default class DaemonApiServer {
 
         const { fileKey } = reqData;
         if (fileKey.manifestSha1) {
-            console.info(`Loading file: sha1://${fileKey.sha1}?manifest=${fileKey.manifestSha1}`)
+            logger.info(`Loading file: sha1://${fileKey.sha1}?manifest=${fileKey.manifestSha1}`)
         }
         else {
-            console.info(`Loading file: sha1://${fileKey.sha1}`)
+            logger.info(`Loading file: sha1://${fileKey.sha1}`)
         }        
         const x = await loadFile(
             this.#node,
@@ -743,19 +744,19 @@ export default class DaemonApiServer {
     // Helper function for returning http request with an error response
     /* istanbul ignore next */
     async _errorResponse(req: Request, res: Response, code: number, errorString: string) {
-        console.info(`Daemon responding with error: ${code} ${errorString}`);
+        logger.error(`Daemon responding with error: ${code} ${errorString}`);
         try {
             res.status(code).send(errorString);
         }
         catch(err) {
-            console.warn(`Problem sending error`, {error: err.message});
+            logger.warn(`Problem sending error`, {error: err.message});
         }
         await sleepMsec(scaledDurationMsec(100));
         try {
             req.socket.destroy();
         }
         catch(err) {
-            console.warn('Problem destroying connection', {error: err.message});
+            logger.warn('Problem destroying connection', {error: err.message});
         }
     }
     // Start listening via http/https

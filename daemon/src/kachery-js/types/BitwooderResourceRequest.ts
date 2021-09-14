@@ -1,31 +1,31 @@
 import AblyTokenRequest, { isAblyTokenRequest } from "./AblyTokenRequest"
 import { BitwooderResourceAuth, isBitwooderResourceAuth } from "./BitwooderDelegationCert"
-import { isEqualTo, isJSONValue, isNumber, isOneOf, isPrivateKeyHex, isString, JSONValue, PrivateKeyHex, _validateObject } from "./kacheryTypes"
+import { isArrayOf, isEqualTo, isJSONValue, isNumber, isOneOf, isString, JSONValue, optional, _validateObject } from "./kacheryTypes"
 
 //////////////////////////////////////////////////////////////////////////////////
 // getUploadUrl
 
-export type GetUploadUrlRequest = {
-    type: 'getUploadUrl',
+export type GetUploadUrlsRequest = {
+    type: 'getUploadUrls',
     payload: {
-        type: 'getUploadUrl'
+        type: 'getUploadUrls'
         expires: number
         resourceId: string
-        filePath: string
-        size: number
+        filePaths: string[]
+        sizes: number[]
     }
     auth: BitwooderResourceAuth
 }
 
 
-export const isGetUploadUrlRequest = (x: any): x is GetUploadUrlRequest => {
+export const isGetUploadUrlsRequest = (x: any): x is GetUploadUrlsRequest => {
     const isPayload = (p: any) => {
-        _validateObject(p, {
+        return _validateObject(p, {
             type: isEqualTo('getUploadUrl'),
             expires: isNumber,
             resourceId: isString,
-            filePath: isString,
-            size: isNumber
+            filePaths: isArrayOf(isString),
+            sizes: isArrayOf(isNumber)
         })
     }
 
@@ -36,15 +36,15 @@ export const isGetUploadUrlRequest = (x: any): x is GetUploadUrlRequest => {
     })
 }
 
-export type GetUploadUrlResponse = {
-    type: 'getUploadUrl'
-    uploadUrl: string
+export type GetUploadUrlsResponse = {
+    type: 'getUploadUrls'
+    uploadUrls: string[]
 }
 
-export const isGetUploadUrlResponse = (x: any): x is GetUploadUrlResponse => {
+export const isGetUploadUrlsResponse = (x: any): x is GetUploadUrlsResponse => {
     return _validateObject(x, {
-        type: isEqualTo('getUploadUrl'),
-        uploadUrl: isString
+        type: isEqualTo('getUploadUrls'),
+        uploadUrls: isArrayOf(isString)
     })
 }
 
@@ -65,7 +65,7 @@ export type GetAblyTokenRequestRequest = {
 
 export const isGetAblyTokenRequestRequest = (x: any): x is GetAblyTokenRequestRequest => {
     const isPayload = (p: any) => {
-        _validateObject(p, {
+        return _validateObject(p, {
             type: isEqualTo('getAblyTokenRequest'),
             expires: isNumber,
             resourceId: isString,
@@ -93,57 +93,73 @@ export const isGetAblyTokenRequestResponse = (x: any): x is GetAblyTokenRequestR
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-// getResourceIdForPrivateKey
+// getResourceInfo
 
-export type GetResourceIdForPrivateKeyRequest = {
-    type: 'getResourceIdForPrivateKey'
-    privateKey: PrivateKeyHex
+export type GetResourceInfoRequest = {
+    type: 'getResourceInfo'
+    resourceId?: string
+    resourceKey?: string
 }
 
 
-export const isGetResourceIdForPrivateKeyRequest = (x: any): x is GetResourceIdForPrivateKeyRequest => {
+export const isGetResourceInfoRequest = (x: any): x is GetResourceInfoRequest => {
     return _validateObject(x, {
-        type: isEqualTo('getResourceIdForPrivateKey'),
-        privateKey: isPrivateKeyHex
+        type: isEqualTo('getResourceInfo'),
+        resourceId: optional(isString),
+        resourceKey: optional(isString)
     })
 }
 
-export type GetResourceIdForPrivateKeyResponse = {
-    type: 'getResourceIdForPrivateKey'
+export type ResourceInfo = {
     resourceId: string
+    resourceType: string
+    bucketBaseUrl?: string
 }
 
-export const isGetResourceIdForPrivateKeyResponse = (x: any): x is GetResourceIdForPrivateKeyResponse => {
+export const isResourceInfo = (x: any): x is ResourceInfo => {
     return _validateObject(x, {
-        type: isEqualTo('getResourceIdForPrivateKey'),
-        resourceId: isString
+        resourceId: isString,
+        resourceType: isString,
+        bucketBaseUrl: optional(isString)
+    }, {allowAdditionalFields: true})
+}
+
+export type GetResourceInfoResponse = {
+    type: 'getResourceInfo'
+    resourceInfo: ResourceInfo
+}
+
+export const isGetResourceInfoResponse = (x: any): x is GetResourceInfoResponse => {
+    return _validateObject(x, {
+        type: isEqualTo('getResourceInfo'),
+        resourceInfo: isResourceInfo
     })
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 
 export type BitwooderResourceRequest =
-    GetUploadUrlRequest |
+    GetUploadUrlsRequest |
     GetAblyTokenRequestRequest |
-    GetResourceIdForPrivateKeyRequest
+    GetResourceInfoRequest
 
 export const isBitwooderResourceRequest = (x: any): x is BitwooderResourceRequest => {
     return isOneOf([
-        isGetUploadUrlRequest,
+        isGetUploadUrlsRequest,
         isGetAblyTokenRequestRequest,
-        isGetResourceIdForPrivateKeyRequest
+        isGetResourceInfoRequest
     ])(x)
 }
 
 export type BitwooderResourceResponse =
-    GetUploadUrlResponse |
+    GetUploadUrlsResponse |
     GetAblyTokenRequestResponse |
-    GetResourceIdForPrivateKeyResponse
+    GetResourceInfoResponse
 
-export const isBitwooderResourceResponse = (x: any): x is BitwooderResourceRequest => {
+export const isBitwooderResourceResponse = (x: any): x is BitwooderResourceResponse => {
     return isOneOf([
-        isGetUploadUrlResponse,
+        isGetUploadUrlsResponse,
         isGetAblyTokenRequestResponse,
-        isGetResourceIdForPrivateKeyResponse
+        isGetResourceInfoResponse
     ])(x)
 }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from 'winston';
 import { LocalFeedManagerInterface } from '../core/ExternalInterface';
 import KacheryHubInterface from '../core/KacheryHubInterface';
 import NodeStats from '../core/NodeStats';
@@ -24,9 +25,11 @@ class FeedManager {
     }
     async createFeed({ feedName } : {feedName: FeedName | null }) {
         // Create a new writeable feed on this node and return the ID of the new feed
+        logger.debug(`FeedManager: Creating feed`)
         return await this.localFeedManager.createFeed(feedName)
     }
     async deleteFeed({ feedId }: {feedId: FeedId}) {
+        logger.debug(`FeedManager: Deleting feed ${feedId}`)
         await this.localFeedManager.deleteFeed(feedId)
     }
     async getFeedId({ feedName }: { feedName: FeedName }) {
@@ -36,6 +39,7 @@ class FeedManager {
         return await this.localFeedManager.hasWriteableFeed(feedId)
     }
     async appendMessages(args: { feedId: FeedId, subfeedHash: SubfeedHash, messages: SubfeedMessage[]}) {
+        logger.debug(`FeedManager: Appending ${args.messages.length} messages to ${args.feedId}/${args.subfeedHash}`)
         // Append messages to a subfeed (must be in a writeable feed on this node)
 
         // Load the subfeed and make sure it is writeable
@@ -98,6 +102,7 @@ class FeedManager {
         // assert(typeof(waitMsec) === 'number');
         // assert(typeof(maxNumMessages) === 'number');
 
+        logger.debug(`FeedManager: Watching for new messages (${Object.keys(subfeedWatches).length} watches; waitMsec=${waitMsec}; maxNumMessages=${maxNumMessages}; signed=${signed})`)
         const messages = new Map<SubfeedWatchName, SubfeedMessage[] | SignedSubfeedMessage[]>();
 
         // first check for messages we have locally and return those if nonempty...
@@ -178,6 +183,7 @@ class FeedManager {
     }
     async createOrRenewIncomingSubfeedSubscription(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) {
         if (!(await this.hasWriteableFeed(feedId))) return
+        logger.debug(`FeedManager: Renewing incoming subfeed subscription for ${channelName} ${feedId}/${subfeedHash} ${position}`)
         const subfeed = await this._loadSubfeed(feedId, subfeedHash, channelName)
         if (!subfeed.isWriteable()) {
             throw Error('Cannot have an incoming subscription to a subfeed that is not writeable')
@@ -190,6 +196,7 @@ class FeedManager {
     }
     async reportSubfeedMessageCountUpdate(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) {
         if (this.#outgoingSubfeedSubscriptionManager.hasSubfeedSubscription(feedId, subfeedHash, channelName)) {
+            logger.debug(`FeedManager: reporting subfeed message count update for ${channelName} ${feedId}/${subfeedHash} ${messageCount}`)
             const subfeed = await this._loadSubfeed(feedId, subfeedHash, channelName)
             subfeed.reportNumRemoteMessages(channelName, messageCount)
         }
@@ -249,7 +256,7 @@ class FeedManager {
         }
     }
     async _uploadSubfeedMessagesToChannel(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
-        const subfeed = await this._loadSubfeed(feedId, subfeedHash, channelName)
+        const subfeed = await this._loadSubfeed(feedId, subfeedHash, '*local*')
         const subfeedJson = await this.kacheryHubInterface.loadSubfeedJson(channelName, feedId, subfeedHash)
         if (subfeedJson) {
             if (Number(subfeedJson.messageCount) >= Number(subfeed.getNumLocalMessages())) {
@@ -258,12 +265,17 @@ class FeedManager {
         }
         const i1 = Number(subfeedJson ? subfeedJson.messageCount : 0)
         const i2 = Number(subfeed.getNumLocalMessages())
+        if (i2 <= i1) return
+        logger.debug(`uploadSubfeedMessagesToChannel: Uploading subfeed messages ${i1}-${i2 - 1} to channel ${channelName}`)
         const signedMessages = subfeed.getLocalSignedMessages({position: subfeedPosition(i1), numMessages: messageCount(i2 - i1)})
-        const uploadUrls = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrls({channelName, feedId, subfeedHash, messageNumberRange: [i1, i2]})
+        const signedMessageContents = signedMessages.map((sm) => (
+            new TextEncoder().encode(JSON.stringify(sm))
+        ))
+        const messageSizes = signedMessageContents.map((smc) => byteCount(smc.length))
+        const uploadUrls = await this.kacheryHubInterface.createSignedSubfeedMessageUploadUrls({channelName, feedId, subfeedHash, messageNumberRange: [i1, i2], messageSizes})
         for (let i = i1; i < i2; i++) {
-            const uploadUrl = uploadUrls[i + '']
-            const signedMessage = signedMessages[i - i1]
-            const signedMessageContent = new TextEncoder().encode(JSON.stringify(signedMessage))
+            const uploadUrl = uploadUrls[i - i1]
+            const signedMessageContent = signedMessageContents[i - i1]
             const resp = await axios.put(uploadUrl.toString(), signedMessageContent, {
                 headers: {
                     'Content-Type': 'application/octet-stream',
@@ -287,9 +299,10 @@ class FeedManager {
             }
             if (Number(subfeedJson2.messageCount) < i2) {
                 subfeedJson2.messageCount = messageCount(i2)
-                const uploadUrl = uploadUrls['subfeedJson']
                 const subfeedJsonContent = new TextEncoder().encode(JSON.stringify(subfeedJson2))
-                const resp = await axios.put(uploadUrl.toString(), subfeedJsonContent, {
+                const subfeedJsonUploadUrl = await this.kacheryHubInterface.createSignedSubfeedJsonUploadUrl({channelName, feedId, subfeedHash, size: byteCount(subfeedJsonContent.length)})
+                logger.debug(`uploadSubfeedMessagesToChannel: Uploading new subfeed.json with messageCount = ${i2}`)
+                const resp = await axios.put(subfeedJsonUploadUrl.toString(), subfeedJsonContent, {
                     headers: {
                         'Content-Type': 'application/octet-stream',
                         'Content-Length': subfeedJsonContent.length
@@ -307,6 +320,7 @@ class FeedManager {
         this._reportSubfeedUpdateToChannel(channelName, feedId, subfeedHash, messageCount(i2))
     }
     async _reportSubfeedUpdateToChannel(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, messageCount: MessageCount) {
+        logger.debug(`FeedManager: Reporting subfeed update to channel ${channelName} ${messageCount}`)
         this.kacheryHubInterface.reportToChannelSubfeedMessagesAdded(
             channelName,
             feedId,
