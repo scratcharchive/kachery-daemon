@@ -21,7 +21,8 @@ def cli():
 @click.option('--node-arg', multiple=True, help='Additional arguments to send to node')
 @click.option('--auth-group', default='', help='The os group that has access to this daemon')
 @click.option('--kachery-hub-url', default='https://kacheryhub.org', help='The url for the kacheryhub app')
-@click.option('--bitwooder-url', default='https://bitwooder.net', help='The url for the bitwooder app')
+# @click.option('--bitwooder-url', default='https://bitwooder.net', help='The url for the bitwooder app')
+@click.option('--bitwooder-url', default='https://bitwooder.vercel.app', help='The url for the bitwooder app')
 def start(label: str, owner: str, method: str, verbose: int, node_arg: List[str], auth_group: str, kachery_hub_url: str, bitwooder_url: str):
     start_daemon(
         label=label,

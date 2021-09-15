@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
-import { testSignatures } from './kachery-js/crypto/signatures';
-import { Address, ChannelLabel, isAddress, isArrayOf, isBoolean, isChannelLabel, isNodeId, isNodeLabel, isPort, isString, isUserId, localFilePath, NodeId, NodeLabel, nodeLabel, optional, UserId, _validateObject } from './kachery-js/types/kacheryTypes';
+import { testSignatures } from 'commonInterface/crypto/signatures';
+import { Address, ChannelLabel, isAddress, isArrayOf, isBoolean, isChannelLabel, isNodeId, isNodeLabel, isPort, isString, isUserId, localFilePath, NodeId, NodeLabel, nodeLabel, optional, UserId, _validateObject } from 'commonInterface/kacheryTypes';
 import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
@@ -104,7 +104,8 @@ function main() {
         y.option('bitwooder-url', {
           describe: 'Url for the bitwooder app',
           type: 'string',
-          default: 'https://bitwooder.net'
+          // default: 'https://bitwooder.net'
+          default: 'https://bitwooder.vercel.app'
         })
         return y
       },

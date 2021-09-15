@@ -1,7 +1,7 @@
 import logger from "winston";;
 import WebSocket from 'ws';
-import { WebSocketInterface, WebSocketServerInterface } from '../../kachery-js/core/ExternalInterface';
-import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from '../../kachery-js/types/kacheryTypes';
+import { WebSocketInterface, WebSocketServerInterface } from 'kacheryInterface/core/ExternalInterface';
+import { DurationMsec, durationMsecToNumber, isBuffer, NodeId, Port } from 'commonInterface/kacheryTypes';
 
 const webSocketInterfaceFromWebSocket = (ws: WebSocket): WebSocketInterface => {
     const onMessage = (cb: (buf: Buffer) => void) => {

@@ -1,9 +1,9 @@
 import fs from 'fs';
-import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, publicKeyHexToFeedId, scaledDurationMsec, SignedSubfeedMessage, subfeedHash, SubfeedHash, _validateObject } from '../../kachery-js/types/kacheryTypes';
-import GarbageMap from '../../kachery-js/util/GarbageMap';
+import { FeedId, FeedName, isFeedId, isJSONObject, isPrivateKeyHex, JSONStringifyDeterministic, JSONValue, localFilePath, LocalFilePath, PrivateKey, PrivateKeyHex, publicKeyHexToFeedId, scaledDurationMsec, SignedSubfeedMessage, subfeedHash, SubfeedHash, _validateObject } from 'commonInterface/kacheryTypes';
+import GarbageMap from 'commonInterface/util/GarbageMap';
 import LocalFeedsDatabase from './LocalFeedsDatabase';
-import { MutableManagerInterface } from '../../kachery-js/core/ExternalInterface';
-import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyToHex } from '../../kachery-js/crypto/signatures';
+import { MutableManagerInterface } from 'kacheryInterface/core/ExternalInterface';
+import { createKeyPair, hexToPrivateKey, privateKeyToHex, publicKeyToHex } from 'commonInterface/crypto/signatures';
 
 interface FeedConfig {
     feedId: FeedId,

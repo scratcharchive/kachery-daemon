@@ -3,10 +3,10 @@ import child_process from 'child_process';
 import fs from 'fs';
 import logger from "winston";;
 import { userInfo } from 'os';
-import { KacheryNode } from '../kachery-js';
-import { elapsedSince, nowTimestamp, scaledDurationMsec } from "../kachery-js/types/kacheryTypes";
-import randomAlphaString from "../kachery-js/util/randomAlphaString";
-import { sleepMsec } from '../kachery-js/util/util';
+import KacheryNode from 'kacheryInterface/core/KacheryNode';
+import { elapsedSince, nowTimestamp, scaledDurationMsec } from "commonInterface/kacheryTypes";
+import randomAlphaString from "commonInterface/util/randomAlphaString";
+import { sleepMsec } from 'commonInterface/util/util';
 
 export default class ClientAuthService {
     #node: KacheryNode

@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { ClientRequest } from 'http';
-import { NodeStats } from '../../kachery-js';
-import { Address, byteCount, ByteCount, ChannelName, DurationMsec, durationMsecToNumber, JSONObject, UrlPath, urlString, UrlString } from '../../kachery-js/types/kacheryTypes';
-import DataStreamy from '../../kachery-js/util/DataStreamy';
+import NodeStats from 'kacheryInterface/core/NodeStats';
+import { Address, byteCount, ByteCount, ChannelName, DurationMsec, durationMsecToNumber, JSONObject, UrlPath, urlString, UrlString } from 'commonInterface/kacheryTypes';
+import DataStreamy from 'commonInterface/util/DataStreamy';
 import { Socket } from 'net';
 
 export const _tests: {[key: string]: () => Promise<void>} = {}

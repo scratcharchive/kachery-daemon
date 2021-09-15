@@ -3,16 +3,16 @@ import express, { Express, Request, Response } from 'express';
 import JsonSocket from 'json-socket';
 import { Socket } from 'net';
 import { action } from './action';
-import DataStreamy from '../kachery-js/util/DataStreamy';
-import { byteCount, durationMsecToNumber, elapsedSince, isJSONObject, JSONObject, mapToObject, messageCount, nowTimestamp, Port, scaledDurationMsec, toSubfeedWatchesRAM } from '../kachery-js/types/kacheryTypes';
-import { sleepMsec } from '../kachery-js/util/util';
+import DataStreamy from 'commonInterface/util/DataStreamy';
+import { byteCount, durationMsecToNumber, elapsedSince, isJSONObject, JSONObject, mapToObject, messageCount, nowTimestamp, Port, scaledDurationMsec, toSubfeedWatchesRAM } from 'commonInterface/kacheryTypes';
+import { sleepMsec } from 'commonInterface/util/util';
 import daemonVersion from '../daemonVersion';
-import ExternalInterface, { HttpServerInterface } from '../kachery-js/core/ExternalInterface';
-import { isGetStatsOpts, NodeStatsInterface } from '../kachery-js/core/getStats';
-import { KacheryNode } from '../kachery-js';
-import { loadFile } from '../kachery-js/core/loadFile';
+import ExternalInterface, { HttpServerInterface } from 'kacheryInterface/core/ExternalInterface';
+import { isGetStatsOpts, NodeStatsInterface } from 'kacheryInterface/core/getStats';
+import KacheryNode from 'kacheryInterface/core/KacheryNode';
+import { loadFile } from 'kacheryInterface/core/loadFile';
 import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskRegisterTaskFunctionsRequest, isTaskRequestTaskRequest, isTaskUpdateTaskStatusRequest, isTaskWaitForTaskResultRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskRegisterTaskFunctionsResponse, TaskRequestTaskResponse, TaskUpdateTaskStatusResponse, TaskWaitForTaskResultResponse } from './daemonApiTypes';
-import { RequestedTask } from '../kachery-js/types/kacheryHubTypes';
+import { RequestedTask } from 'kacheryInterface/kacheryHubTypes';
 import logger from "winston";;
 
 export default class DaemonApiServer {
