@@ -1,5 +1,5 @@
-import { JSONStringifyDeterministic, JSONValue, LocalFilePath, localFilePath, scaledDurationMsec, Sha1Hash, sha1OfString } from "commonInterface/kacheryTypes"
-import GarbageMap from "commonInterface/util/GarbageMap"
+import { JSONStringifyDeterministic, JSONValue, LocalFilePath, localFilePath, scaledDurationMsec, Sha1Hash, sha1OfString } from "../../../commonInterface/kacheryTypes"
+import GarbageMap from "../../../commonInterface/util/GarbageMap"
 import MutableDatabase, { MutableRecord } from "./MutableDatabase"
 
 export default class MutableManager {

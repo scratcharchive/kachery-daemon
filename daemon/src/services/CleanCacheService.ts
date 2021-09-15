@@ -1,8 +1,8 @@
 import logger from "winston";
 import CacheManager from '../cacheManager/CacheManager'
-import KacheryNode from 'kacheryInterface/core/KacheryNode'
-import { ByteCount, scaledDurationMsec } from "commonInterface/kacheryTypes"
-import { sleepMsec } from "commonInterface/util/util"
+import KacheryNode from '../kacheryInterface/core/KacheryNode'
+import { ByteCount, scaledDurationMsec } from "../commonInterface/kacheryTypes"
+import { sleepMsec } from "../commonInterface/util/util"
 import { action } from "./action"
 
 export default class CleanCacheService {

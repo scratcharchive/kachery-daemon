@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
-import { testSignatures } from 'commonInterface/crypto/signatures';
-import { Address, ChannelLabel, isAddress, isArrayOf, isBoolean, isChannelLabel, isNodeId, isNodeLabel, isPort, isString, isUserId, localFilePath, NodeId, NodeLabel, nodeLabel, optional, UserId, _validateObject } from 'commonInterface/kacheryTypes';
+import { testSignatures } from './commonInterface/crypto/signatures';
+import { Address, ChannelLabel, isAddress, isArrayOf, isBoolean, isChannelLabel, isNodeId, isNodeLabel, isPort, isString, isUserId, localFilePath, NodeId, NodeLabel, nodeLabel, optional, UserId, _validateObject } from './commonInterface/kacheryTypes';
 import os from 'os';
 import yargs from 'yargs';
 import realExternalInterface from './external/real/realExternalInterface';
 import startDaemon from './startDaemon';
-import { getStorageDir } from 'storageDir';
-import 'loggerSetup';
+import { getStorageDir } from './storageDir';
+import './loggerSetup';
 import logger from 'winston'
 
 // Thanks: https://stackoverflow.com/questions/4213351/make-node-js-not-exit-on-error

@@ -1,7 +1,7 @@
-import { NodeChannelMembership } from "kacheryInterface/kacheryHubTypes";
-import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "commonInterface/kacheryTypes";
-import { formatByteCount, sleepMsec } from "commonInterface/util/util";
-import KacheryNode from "kacheryInterface/core/KacheryNode";
+import { NodeChannelMembership } from "../kacheryInterface/kacheryHubTypes";
+import { byteCount, durationGreaterThan, elapsedSince, nowTimestamp, Port, unscaledDurationMsec } from "../commonInterface/kacheryTypes";
+import { formatByteCount, sleepMsec } from "../commonInterface/util/util";
+import KacheryNode from "../kacheryInterface/core/KacheryNode";
 import VERSION from "../daemonVersion"
 import logger from "winston";
 

@@ -1,11 +1,11 @@
 import axios from 'axios';
 import fs from 'fs';
-import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from 'commonInterface/crypto/signatures';
-import ExternalInterface from 'kacheryInterface/core/ExternalInterface';
-import KacheryNode from 'kacheryInterface/core/KacheryNode';
-import { KacheryNodeRequest, KacheryNodeRequestBody } from 'kacheryInterface/kacheryNodeRequestTypes';
+import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from './commonInterface/crypto/signatures';
+import ExternalInterface from './kacheryInterface/core/ExternalInterface';
+import KacheryNode from './kacheryInterface/core/KacheryNode';
+import { KacheryNodeRequest, KacheryNodeRequestBody } from './kacheryInterface/kacheryNodeRequestTypes';
 import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, publicKeyHexToNodeId, Signature, UserId } from './commonInterface/kacheryTypes';
-import { KacheryHubPubsubMessageBody } from 'kacheryInterface/pubsubMessages';
+import { KacheryHubPubsubMessageBody } from './kacheryInterface/pubsubMessages';
 import { isReadableByOthers } from './external/real/LocalFeedManager';
 import MutableManager from './external/real/mutables/MutableManager';
 import ClientAuthService from './services/ClientAuthService';

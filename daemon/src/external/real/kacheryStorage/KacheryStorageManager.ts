@@ -3,11 +3,11 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { ClientRequest } from 'http';
 import { Socket } from 'net';
-import DataStreamy from 'commonInterface/util/DataStreamy';
-import { sleepMsec } from 'commonInterface/util/util';
-import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, isNull, isNumber, isOneOf, isString, localFilePath, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString, _validateObject } from 'commonInterface/kacheryTypes';
-import randomAlphaString from 'commonInterface/util/randomAlphaString';
-import NodeStats from 'kacheryInterface/core/NodeStats';
+import DataStreamy from '../../../commonInterface/util/DataStreamy';
+import { sleepMsec } from '../../../commonInterface/util/util';
+import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, FileKey, FileManifest, FileManifestChunk, isBuffer, isNull, isNumber, isOneOf, isString, localFilePath, LocalFilePath, NodeId, nowTimestamp, scaledDurationMsec, Sha1Hash, UrlString, _validateObject } from '../../../commonInterface/kacheryTypes';
+import randomAlphaString from '../../../commonInterface/util/randomAlphaString';
+import NodeStats from '../../../kacheryInterface/core/NodeStats';
 import logger from "winston";;
 
 type LinkObject = {

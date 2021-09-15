@@ -1,8 +1,8 @@
 import { action } from "./action"
-import { scaledDurationMsec } from "commonInterface/kacheryTypes"
-import { sleepMsec } from "commonInterface/util/util"
-import KacheryNode from "kacheryInterface/core/KacheryNode"
-import KacheryHubClient from "kacheryInterface/kacheryHubClient/KacheryHubClient"
+import { scaledDurationMsec } from "../commonInterface/kacheryTypes"
+import { sleepMsec } from "../commonInterface/util/util"
+import KacheryNode from "../kacheryInterface/core/KacheryNode"
+import KacheryHubClient from "../kacheryInterface/kacheryHubClient/KacheryHubClient"
 import logger from "winston";
 
 export default class KacheryHubService {

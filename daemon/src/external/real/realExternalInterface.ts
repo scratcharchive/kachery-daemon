@@ -1,7 +1,7 @@
 import dgram from 'dgram';
-import { LocalFilePath } from 'commonInterface/kacheryTypes';
+import { LocalFilePath } from '../../commonInterface/kacheryTypes';
 import MutableManager from './mutables/MutableManager';
-import ExternalInterface, { LocalFeedManagerInterface, MutableManagerInterface } from 'kacheryInterface/core/ExternalInterface';
+import ExternalInterface, { LocalFeedManagerInterface, MutableManagerInterface } from '../../kacheryInterface/core/ExternalInterface';
 import { httpGetDownload, httpPostJson } from "./httpRequests";
 import { KacheryStorageManager } from './kacheryStorage/KacheryStorageManager';
 import LocalFeedManager from './LocalFeedManager';

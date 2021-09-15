@@ -1,4 +1,4 @@
-import { getStorageDir } from "storageDir"
+import { getStorageDir } from "./storageDir"
 import winston, { format } from "winston"
 
 const storageDir = getStorageDir()
