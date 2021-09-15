@@ -88,7 +88,7 @@ export type GetAblyTokenRequestResponse = {
 export const isGetAblyTokenRequestResponse = (x: any): x is GetAblyTokenRequestResponse => {
     return _validateObject(x, {
         type: isEqualTo('getAblyTokenRequest'),
-        tokenRequest: isAblyTokenRequest
+        ablyTokenRequest: isAblyTokenRequest
     })
 }
 
