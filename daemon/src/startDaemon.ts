@@ -13,7 +13,7 @@ import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
 import KacheryHubService from './services/KacheryHubService';
 import CleanCacheService from './services/CleanCacheService';
-import { BitwooderResourceRequest, BitwooderResourceResponse } from 'bitwooderInterface/BitwooderResourceRequest';
+import { BitwooderResourceRequest, BitwooderResourceResponse } from './bitwooderInterface/BitwooderResourceRequest';
 import logger from "winston";;
 
 export interface StartDaemonOpts {
