@@ -104,8 +104,7 @@ function main() {
         y.option('bitwooder-url', {
           describe: 'Url for the bitwooder app',
           type: 'string',
-          // default: 'https://bitwooder.net'
-          default: 'https://bitwooder.vercel.app'
+          default: 'https://bitwooder.net'
         })
         return y
       },
