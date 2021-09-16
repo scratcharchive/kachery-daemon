@@ -1,8 +1,8 @@
 import fs from 'fs';
 import { Database, open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import { FeedId, isSignedSubfeedMessage, JSONStringifyDeterministic, LocalFilePath, SignedSubfeedMessage, SubfeedHash, unscaledDurationMsec } from "../../kachery-js/types/kacheryTypes";
-import { sleepMsec } from '../../kachery-js/util/util';
+import { FeedId, isSignedSubfeedMessage, JSONStringifyDeterministic, LocalFilePath, SignedSubfeedMessage, SubfeedHash, unscaledDurationMsec } from "../../commonInterface/kacheryTypes";
+import { sleepMsec } from '../../commonInterface/util/util';
 
 class LocalFeedsDatabase {
     #db: Database | null = null
@@ -101,7 +101,7 @@ class LocalFeedsDatabase {
         try {
             await db.run('BEGIN TRANSACTION')
             await db.run(`
-                INSERT INTO feeds (feedId) VALUES ($feedId)
+                INSERT OR IGNORE INTO feeds (feedId) VALUES ($feedId)
             `, {
                 '$feedId': feedId.toString()
             })
@@ -195,7 +195,7 @@ class LocalFeedsDatabase {
             await this._closeDatabase()
         }
     }
-    async appendSignedMessagesToSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) {
+    async addSignedMessagesToSubfeed(feedId: FeedId, subfeedHash: SubfeedHash, messages: SignedSubfeedMessage[]) {
         await this._initialize()
         const db = await this._openDatabase()
         try {
@@ -212,7 +212,7 @@ class LocalFeedsDatabase {
             for (let d of data) {
                 // await fs.promises.appendFile(this.databasePath + '.debug', JSON.stringify({feedId: d.feedId, subfeedHash: d.subfeedHash, position: d.position, message: d.message}) + '\n')
                 await db.run(`
-                    INSERT INTO subfeedMessages (feedId, subfeedHash, position, message) VALUES ($feedId, $subfeedHash, $position, $message)
+                    INSERT OR IGNORE INTO subfeedMessages (feedId, subfeedHash, position, message) VALUES ($feedId, $subfeedHash, $position, $message)
                 `, {
                     '$feedId': d.feedId,
                     '$subfeedHash': d.subfeedHash,

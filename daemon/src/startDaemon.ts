@@ -1,11 +1,11 @@
 import axios from 'axios';
 import fs from 'fs';
-import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from './kachery-js/crypto/signatures';
-import ExternalInterface from './kachery-js/core/ExternalInterface';
-import { KacheryNode } from './kachery-js';
-import { KacheryNodeRequest, KacheryNodeRequestBody } from './kachery-js/types/kacheryNodeRequestTypes';
-import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, publicKeyHexToNodeId, Signature, UserId } from './kachery-js/types/kacheryTypes';
-import { KacheryHubPubsubMessageBody } from './kachery-js/types/pubsubMessages';
+import { createKeyPair, hexToPrivateKey, hexToPublicKey, privateKeyToHex, publicKeyToHex, signMessage, testKeyPair, verifySignature } from './commonInterface/crypto/signatures';
+import ExternalInterface from './kacheryInterface/core/ExternalInterface';
+import KacheryNode from './kacheryInterface/core/KacheryNode';
+import { KacheryNodeRequest, KacheryNodeRequestBody } from './kacheryInterface/kacheryNodeRequestTypes';
+import { isKeyPair, JSONObject, JSONValue, KeyPair, LocalFilePath, NodeLabel, Port, publicKeyHexToNodeId, Signature, UserId } from './commonInterface/kacheryTypes';
+import { KacheryHubPubsubMessageBody } from './kacheryInterface/pubsubMessages';
 import { isReadableByOthers } from './external/real/LocalFeedManager';
 import MutableManager from './external/real/mutables/MutableManager';
 import ClientAuthService from './services/ClientAuthService';
@@ -13,6 +13,8 @@ import DaemonApiServer from './services/DaemonApiServer';
 import DisplayStateService from './services/DisplayStateService';
 import KacheryHubService from './services/KacheryHubService';
 import CleanCacheService from './services/CleanCacheService';
+import { BitwooderResourceRequest, BitwooderResourceResponse } from 'bitwooderInterface/BitwooderResourceRequest';
+import logger from "winston";;
 
 export interface StartDaemonOpts {
     authGroup: string | null,
@@ -24,7 +26,8 @@ export interface StartDaemonOpts {
         clientAuth?: boolean,
         cleanCache?: boolean
     },
-    kacheryHubUrl: string
+    kacheryHubUrl: string,
+    bitwooderUrl: string
 }
 
 export interface DaemonInterface {
@@ -76,6 +79,10 @@ const startDaemon = async (args: {
         const x = await axios.post(`${opts.kacheryHubUrl}/api/kacheryNode`, request)
         return x.data
     }
+    const sendBitwooderResourceRequest = async (request: BitwooderResourceRequest): Promise<BitwooderResourceResponse> => {
+        const x = await axios.post(`${opts.bitwooderUrl}/api/resource`, request)
+        return x.data as any as BitwooderResourceResponse
+    }
     const signPubsubMessage2 = async (messageBody: KacheryHubPubsubMessageBody): Promise<Signature> => {
         return await signMessage(messageBody as any as JSONValue, keyPair)
     }
@@ -84,6 +91,7 @@ const startDaemon = async (args: {
         verbose,
         nodeId,
         sendKacheryNodeRequest,
+        sendBitwooderResourceRequest,
         signPubsubMessage: signPubsubMessage2,
         label,
         ownerId,
@@ -92,6 +100,7 @@ const startDaemon = async (args: {
         localFeedManager,
         opts: {
             kacheryHubUrl: opts.kacheryHubUrl,
+            bitwooderUrl: opts.bitwooderUrl,
             verifySubfeedMessageSignatures: true
         }
     })
@@ -100,7 +109,7 @@ const startDaemon = async (args: {
     const daemonApiServer = new DaemonApiServer(kNode, externalInterface, { verbose });
     if (opts.services.daemonServer && (daemonApiPort !== null)) {
         await daemonApiServer.listen(daemonApiPort);
-        console.info(`Daemon http server listening on port ${daemonApiPort}`)
+        logger.info(`Daemon http server listening on port ${daemonApiPort}`)
     }
 
     // start the other services

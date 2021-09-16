@@ -1,8 +1,9 @@
-import { KacheryStorageManagerInterface } from "../kachery-js/core/ExternalInterface";
-import { byteCount, ByteCount, isByteCount, isNumber, isObject, isSha1Hash, Sha1Hash, Timestamp } from "../kachery-js/types/kacheryTypes";
-import GarbageMap from "../kachery-js/util/GarbageMap";
+import { KacheryStorageManagerInterface } from "../kacheryInterface/core/ExternalInterface";
+import { byteCount, ByteCount, isByteCount, isNumber, isObject, isSha1Hash, Sha1Hash, Timestamp } from "../commonInterface/kacheryTypes";
+import GarbageMap from "../commonInterface/util/GarbageMap";
 import fs from 'fs'
 import yaml from 'js-yaml'
+import logger from "winston";
 
 type FileRecord = {
     sha1: Sha1Hash
@@ -53,12 +54,12 @@ class CacheManager {
     async clean() {
         const maxCacheSizeBytes = this._getMaxCacheSizeBytes()
         if (maxCacheSizeBytes) {
-            console.info(`Limiting cache size to ${maxCacheSizeBytes/1000000000} GiB.`)
+            logger.info(`Limiting cache size to ${maxCacheSizeBytes/1000000000} GiB.`)
         }
         else {
-            console.info('Not limiting cache size.')
+            logger.info('Not limiting cache size.')
         }
-        console.info(`Current cache size: ${Number(this.#totalSize)/1000000000} GiB`)
+        logger.info(`Current cache size: ${Number(this.#totalSize)/1000000000} GiB`)
         if (!maxCacheSizeBytes) return
 
         // if we are below the limit then don't do anything
@@ -67,7 +68,7 @@ class CacheManager {
         // Let's update all the files to make sure we have the right access times (and delete any that are missing)
         await this._updateAllFilesInList()
 
-        console.info(`Current cache size: ${Number(this.#totalSize)/1000000000} GiB`)
+        logger.info(`Current cache size: ${Number(this.#totalSize)/1000000000} GiB`)
         if (!maxCacheSizeBytes) return
 
         // check again whether we are below the limit
@@ -76,7 +77,7 @@ class CacheManager {
         // Determine the number of bytes we need to clear (ie. free up) - we're going to go down to 70% if capacity
         const numBytesToClear = Number(this.#totalSize) - Number(maxCacheSizeBytes) * 0.7
 
-        console.info(`Cleaning cache: seeking to free ${numBytesToClear} bytes...`)
+        logger.info(`Cleaning cache: seeking to free ${numBytesToClear} bytes...`)
 
         // file records sorted by accessed timestamp
         const recordsSortedByAccess = [...this.#allFiles.values()]
@@ -98,14 +99,14 @@ class CacheManager {
         if (cutoffIndex2 === undefined) cutoffIndex2 = cumulativeSize.length
         const recordsToDelete = candidateRecordsSortedBySize.filter((r, i) => (i <= cutoffIndex2))
 
-        console.info(`Cleaning cache: moving ${recordsToDelete.length} files to trash.`)
+        logger.info(`Cleaning cache: moving ${recordsToDelete.length} files to trash.`)
 
         // Now actually move the files to trash
         for (let rec of recordsToDelete) {
             await this._moveFileToTrash(rec.sha1)
         }
 
-        console.info(`Done cleaning cache. Total size is now ${this.#totalSize} bytes.`)
+        logger.info(`Done cleaning cache. Total size is now ${this.#totalSize} bytes.`)
     }
     async _moveFileToTrash(sha1: Sha1Hash) {
         const x = this.#allFiles.get(sha1)

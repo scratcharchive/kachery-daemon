@@ -1,8 +1,8 @@
 import fs from 'fs';
 import { Database, open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import { JSONStringifyDeterministic, JSONValue, LocalFilePath, Sha1Hash, unscaledDurationMsec } from '../../../kachery-js/types/kacheryTypes';
-import { sleepMsec } from '../../../kachery-js/util/util';
+import { JSONStringifyDeterministic, JSONValue, LocalFilePath, Sha1Hash, unscaledDurationMsec } from '../../../commonInterface/kacheryTypes';
+import { sleepMsec } from '../../../commonInterface/util/util';
 
 export type MutableRecord = {
     key: JSONValue

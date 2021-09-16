@@ -6,7 +6,7 @@ from ._daemon_connection import _probe_daemon
 from ._daemon_connection import _daemon_port, _daemon_host
 from .version import __version__
 
-def start_daemon(*, label: str, owner: str, method: str, verbose: int, node_arg: List[str], auth_group: str, kachery_hub_url: str):
+def start_daemon(*, label: str, owner: str, method: str, verbose: int, node_arg: List[str], auth_group: str, kachery_hub_url: str, bitwooder_url: str):
     if _probe_daemon() is not None:
         raise Exception('Cannot start daemon. Already running.')
 
@@ -19,6 +19,8 @@ def start_daemon(*, label: str, owner: str, method: str, verbose: int, node_arg:
         start_args.append(f'--auth-group {auth_group}')
     if kachery_hub_url:
         start_args.append(f'--kachery-hub-url {kachery_hub_url}')
+    if bitwooder_url:
+        start_args.append(f'--bitwooder-url {bitwooder_url}')
     start_args.append(f'--label {label}')
     if owner:
         start_args.append(f'--owner {owner}')

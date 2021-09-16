@@ -1,8 +1,9 @@
 import { action } from "./action"
-import { scaledDurationMsec } from "../kachery-js/types/kacheryTypes"
-import { sleepMsec } from "../kachery-js/util/util"
-import { KacheryNode } from '../kachery-js'
-import KacheryHubClient from "../kachery-js/kacheryHubClient/KacheryHubClient"
+import { scaledDurationMsec } from "../commonInterface/kacheryTypes"
+import { sleepMsec } from "../commonInterface/util/util"
+import KacheryNode from "../kacheryInterface/core/KacheryNode"
+import KacheryHubClient from "../kacheryInterface/kacheryHubClient/KacheryHubClient"
+import logger from "winston";
 
 export default class KacheryHubService {
     #node: KacheryNode
@@ -31,7 +32,7 @@ export default class KacheryHubService {
             await action('sendReportToKacheryHub', {}, async () => {
                 await this._sendReportToKacheryHub()
             }, async (err: Error) => {
-                console.warn(`****************************************** Problem reporting to kacheryhub (${err.message})`)
+                logger.error(`Problem reporting to kacheryhub (${err.message})`)
             });
             /////////////////////////////////////////////////////////////////////////
 

@@ -1,7 +1,8 @@
+import logger from "winston";
 import CacheManager from '../cacheManager/CacheManager'
-import { KacheryNode } from '../kachery-js'
-import { ByteCount, scaledDurationMsec } from "../kachery-js/types/kacheryTypes"
-import { sleepMsec } from "../kachery-js/util/util"
+import KacheryNode from '../kacheryInterface/core/KacheryNode'
+import { ByteCount, scaledDurationMsec } from "../commonInterface/kacheryTypes"
+import { sleepMsec } from "../commonInterface/util/util"
 import { action } from "./action"
 
 export default class CleanCacheService {
@@ -23,7 +24,7 @@ export default class CleanCacheService {
         await action('initialize-clean-cache', {}, async () => {
             await this.#cacheManager.initialize()
         }, async (err: Error) => {
-            console.warn(`****************************************** Problem initializing clean-cache (${err.message})`)
+            logger.error(`Problem initializing clean-cache (${err.message})`)
         });
         /////////////////////////////////////////////////////////////////////////
         while (true) {
@@ -32,7 +33,7 @@ export default class CleanCacheService {
             await action('clean-cache', {}, async () => {
                 await this.#cacheManager.clean()
             }, async (err: Error) => {
-                console.warn(`****************************************** Problem cleaning cache (${err.message})`)
+                logger.error(`Problem cleaning cache (${err.message})`)
             });
             /////////////////////////////////////////////////////////////////////////
 
