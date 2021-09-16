@@ -227,7 +227,7 @@ const isNodeChannelMembership = (x: any): x is NodeChannelMembership => {
         authorization: optional(isNodeChannelAuthorization),
         channelResourceId: optional(isString),
         channelBucketBaseUrl: optional(isString)
-    })
+    }, {allowAdditionalFields: true})
 }
 
 export type NodeConfig = {
