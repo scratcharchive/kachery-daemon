@@ -98,6 +98,7 @@ const startDaemon = async (args: {
         kacheryStorageManager,
         mutableManager,
         localFeedManager,
+        additionalChannels: [],
         opts: {
             kacheryHubUrl: opts.kacheryHubUrl,
             bitwooderUrl: opts.bitwooderUrl,

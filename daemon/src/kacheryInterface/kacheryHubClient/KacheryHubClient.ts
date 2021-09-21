@@ -53,6 +53,7 @@ class KacheryHubClient {
         return nodeConfig
     }
     async fetchChannelConfig(channelName: ChannelName) {
+        if (!channelName) throw Error('channelName is empty in fetchChannelConfig')
         const reqBody: GetChannelConfigRequestBody = {
             type: 'getChannelConfig',
             channelName
@@ -94,6 +95,7 @@ class KacheryHubClient {
     }
     async fetchPubsubAuthForChannel(channelName: ChannelName): Promise<PubsubAuth> {
         if (!this.opts.ownerId) throw Error('No owner ID in fetchPubsubAuthForChannel')
+        if (!channelName) throw Error('Channel name is empty')
         const channelConfig = await this.fetchChannelConfig(channelName)
         const resourceId = channelConfig.bitwooderResourceId
         if (!resourceId) {
@@ -273,7 +275,7 @@ class KacheryHubClient {
     }
     createPubsubClientForChannel(channelName: ChannelName, subscribeToPubsubChannels: PubsubChannelName[]) {
         if (channelName.toString() in this.#pubsubClients) {
-            // todo: think about how to update the subscriptions of the auth has changed
+            // todo: think about how to update the subscriptions if the auth has changed
             return
         }
         const ablyAuthCallback: AblyAuthCallback = (tokenParams: Ably.Types.TokenParams, callback: AblyAuthCallbackCallback) => {

@@ -24,10 +24,10 @@ export default class DisplayStateService {
         lines.push(`${VERSION}`)
         lines.push(`NODE: ${this.#node.nodeId()} (${this.#node.nodeLabel()})`)
         lines.push(`OWNER: ${this.#node.ownerId() || ''}`)
-        const nodeConfig = await this.#node.kacheryHubInterface().getNodeConfig()
-        if (nodeConfig) {
-            ;(nodeConfig.channelMemberships || []).map(cm => {
-                lines.push(`CHANNEL ${cm.channelName} ${makeRoleString(cm)}`)
+        const channelMemberships = await this.#node.kacheryHubInterface().getChannelMemberships()
+        if (channelMemberships) {
+            ;(channelMemberships || []).map(cm => {
+                lines.push(`CHANNEL ${cm.channelName} ${makeAuthString(cm)}`)
             })
         }
         // if (this.opts.daemonApiPort)
@@ -59,18 +59,25 @@ export default class DisplayStateService {
     }
 }
 
-const makeRoleString = (cm: NodeChannelMembership) => {
+const makeAuthString = (cm: NodeChannelMembership) => {
     const ret: string[] = []
-    if (cm.roles.downloadFiles) ret.push('dfi')
-    if (cm.roles.downloadFeeds) ret.push('dfe')
-    if (cm.roles.downloadTaskResults) ret.push('dtr')
+    // roles are deprecated
+    // if (cm.roles.downloadFiles) ret.push('dfi')
+    // if (cm.roles.downloadFeeds) ret.push('dfe')
+    // if (cm.roles.downloadTaskResults) ret.push('dtr')
     if (cm.authorization) {
-        if ((cm.roles.requestFiles) && (cm.authorization.permissions.requestFiles))  ret.push('rfi')
-        if ((cm.roles.requestFeeds) && (cm.authorization.permissions.requestFeeds)) ret.push('rfe')
-        if ((cm.roles.requestTasks) && (cm.authorization.permissions.requestTasks)) ret.push('rtr')
-        if ((cm.roles.provideFiles) && (cm.authorization.permissions.provideFiles)) ret.push('pfi')
-        if ((cm.roles.provideFeeds) && (cm.authorization.permissions.provideFeeds)) ret.push('pfe')
-        if ((cm.roles.provideTasks) && (cm.authorization.permissions.provideTasks)) ret.push('ptr')
+        // if ((cm.roles.requestFiles) && (cm.authorization.permissions.requestFiles))  ret.push('rfi')
+        // if ((cm.roles.requestFeeds) && (cm.authorization.permissions.requestFeeds)) ret.push('rfe')
+        // if ((cm.roles.requestTasks) && (cm.authorization.permissions.requestTasks)) ret.push('rtr')
+        // if ((cm.roles.provideFiles) && (cm.authorization.permissions.provideFiles)) ret.push('pfi')
+        // if ((cm.roles.provideFeeds) && (cm.authorization.permissions.provideFeeds)) ret.push('pfe')
+        // if ((cm.roles.provideTasks) && (cm.authorization.permissions.provideTasks)) ret.push('ptr')
+        if (cm.authorization.permissions.requestFiles)  ret.push('rfi')
+        if (cm.authorization.permissions.requestFeeds) ret.push('rfe')
+        if (cm.authorization.permissions.requestTasks) ret.push('rtr')
+        if (cm.authorization.permissions.provideFiles) ret.push('pfi')
+        if (cm.authorization.permissions.provideFeeds) ret.push('pfe')
+        if (cm.authorization.permissions.provideTasks) ret.push('ptr')
     }
     return ret.join(' ')
 }
