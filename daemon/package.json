@@ -1,6 +1,6 @@
 {
   "name": "kachery-daemon-node",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "engines": {
     "node": ">=12.0.0"
   },
