@@ -340,6 +340,23 @@ class Subfeed {
                 }
                 this.nodeStats.reportBytesSent(byteCount(signedMessageContent.length), channelName)
             }
+            const subfeedJson = {
+                messageCount: i2
+            }
+            const subfeedJsonContent = new TextEncoder().encode(JSON.stringify(subfeedJson))
+            const subfeedJsonUploadUrl = await this.kacheryHubInterface.createSignedSubfeedJsonUploadUrl({channelName, feedId: this.feedId, subfeedHash: this.subfeedHash, size: byteCount(subfeedJsonContent.length)})
+            const resp = await axios.put(subfeedJsonUploadUrl.toString(), subfeedJsonContent, {
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Length': subfeedJsonContent.length
+                },
+                maxBodyLength: Infinity, // apparently this is important
+                maxContentLength: Infinity // apparently this is important
+            })
+            if (resp.status !== 200) {
+                throw Error(`Error in upload of subfeed json: ${resp.statusText}`)
+            }
+            this.nodeStats.reportBytesSent(byteCount(subfeedJsonContent.length), channelName)
         }
         return numLocal
     }
