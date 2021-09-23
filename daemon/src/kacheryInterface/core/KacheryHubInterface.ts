@@ -689,6 +689,9 @@ class KacheryHubInterface {
             this.opts.nodeStats.reportMessagesSent(1, channelName)
             pubsubChannel.publish({data: m as any as JSONValue})    
         }
+        else {
+            console.warn('No pubsub client for channel', channelName, pubsubChannelName)
+        }
     }
     _handleKacheryHubPubsubMessage(x: IncomingKacheryHubPubsubMessage) {
         const msg = x.message
@@ -787,8 +790,27 @@ class KacheryHubInterface {
             logger.warn('Problem fetching node config.', err.message)
             return
         }
+
+        this.#channelMemberships = [...(nodeConfig.channelMemberships || [])]
+        
+        for (let channelName of this.opts.additionalChannels) {
+            const channelConfig: ChannelConfig = await this.#kacheryHubClient.fetchChannelConfig(channelName)
+            const authorizedNode = (channelConfig.authorizedNodes || []).filter(an => (an.nodeId === this.opts.nodeId))[0]
+            if (authorizedNode) {
+                const channelMembership: NodeChannelMembership = {
+                    nodeId: this.opts.nodeId,
+                    channelName,
+                    roles: {}, // roles are deprecated
+                    channelResourceId: channelConfig.bitwooderResourceId,
+                    channelBucketBaseUrl: channelConfig.bucketBaseUrl,
+                    authorization: {channelName, nodeId: this.opts.nodeId, permissions: authorizedNode.permissions}
+                }
+                this.#channelMemberships.push(channelMembership)
+            }
+        }
+
         // initialize the pubsub clients so we can subscribe to the pubsub channels
-        for (let cm of (nodeConfig.channelMemberships || [])) {
+        for (let cm of this.#channelMemberships) {
             const au = cm.authorization
             if (au) {
                 const subscribeToPubsubChannels: PubsubChannelName[] = []
@@ -829,19 +851,7 @@ class KacheryHubInterface {
                 this.#kacheryHubClient.createPubsubClientForChannel(cm.channelName, subscribeToPubsubChannels)
             }
         }
-        this.#channelMemberships = [...(nodeConfig.channelMemberships || [])]
         
-        for (let channelName of this.opts.additionalChannels) {
-            const channelConfig: ChannelConfig = await this.#kacheryHubClient.fetchChannelConfig(channelName)
-            const channelMembership: NodeChannelMembership = {
-                nodeId: this.opts.nodeId,
-                channelName,
-                roles: {}, // roles are deprecated
-                channelResourceId: channelConfig.bitwooderResourceId,
-                channelBucketBaseUrl: channelConfig.bucketBaseUrl
-            }
-            this.#channelMemberships.push(channelMembership)
-        }
     }
 }
 

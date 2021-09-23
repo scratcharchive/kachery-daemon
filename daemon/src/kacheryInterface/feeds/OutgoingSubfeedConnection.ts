@@ -1,4 +1,4 @@
-import { elapsedSince, MessageCount, nowTimestamp, SignedSubfeedMessage, SubfeedPosition, zeroTimestamp } from "../../commonInterface/kacheryTypes";
+import { elapsedSince, nowTimestamp, SubfeedPosition, zeroTimestamp } from "../../commonInterface/kacheryTypes";
 import Subfeed from "./Subfeed";
 
 class OutgoingSubfeedConnection {
@@ -6,11 +6,12 @@ class OutgoingSubfeedConnection {
     #lastSendSubscribeToSubfeed = zeroTimestamp()
     #lastReceivedReport = zeroTimestamp()
     constructor(
-        private subfeed: Subfeed,
-        private onNewMessagesFromRemote: (messages: SignedSubfeedMessage[]) => void,
-        private onNumUploadedMessagesFromRemote: (numUploadedMessages: MessageCount) => void
+        private subfeed: Subfeed
     ) {
 
+    }
+    reportReceivedUpdateFromRemote() {
+        this.#lastReceivedReport = nowTimestamp()
     }
     renew() {
         const channelName = this.subfeed.channelName

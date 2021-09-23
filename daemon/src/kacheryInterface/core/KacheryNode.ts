@@ -1,9 +1,9 @@
-import { BitwooderResourceRequest, BitwooderResourceResponse } from '../../bitwooderInterface/BitwooderResourceRequest'
 import logger from "winston"
+import { BitwooderResourceRequest, BitwooderResourceResponse } from '../../bitwooderInterface/BitwooderResourceRequest'
+import { ByteCount, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, UserId } from '../../commonInterface/kacheryTypes'
 import FeedManager from '../feeds/FeedManager'
 import FileUploader, { SignedFileUploadUrlCallback } from '../FileUploader/FileUploader'
 import { KacheryNodeRequestBody } from '../kacheryNodeRequestTypes'
-import { ByteCount, channelName, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, UserId } from '../../commonInterface/kacheryTypes'
 import { KacheryHubPubsubMessageBody } from '../pubsubMessages'
 import { KacheryStorageManagerInterface, LocalFeedManagerInterface, MutableManagerInterface } from './ExternalInterface'
 import { getStats, GetStatsOpts } from './getStats'
@@ -77,10 +77,24 @@ class KacheryNode {
         })
 
         this.#kacheryHubInterface.onNewSubfeedMessages((channelName, feedId, subfeedHash, messages) => {
-            // todo-subscription
+            ;(async () => {
+                if (!this.#feedManager.hasLoadedSubfeed(channelName, feedId, subfeedHash)) {
+                    return
+                }
+                const sf = await this.#feedManager._loadSubfeed(feedId, subfeedHash, channelName)
+                sf.reportReceivedUpdateFromRemote()
+                sf.addSignedMessages(messages)
+            })()
         })
         this.#kacheryHubInterface.onNumSubfeedMessagesUploaded((channelName, feedId, subfeedHash, numUploadedMessages) => {
-            // todo-subscription
+            ;(async () => {
+                if (!this.#feedManager.hasLoadedSubfeed(channelName, feedId, subfeedHash)) {
+                    return
+                }
+                const sf = await this.#feedManager._loadSubfeed(feedId, subfeedHash, channelName)
+                sf.reportReceivedUpdateFromRemote()
+                sf.downloadMessages(numUploadedMessages)
+            })()
         })
 
         const signedFileUploadUrlCallback: SignedFileUploadUrlCallback = async (a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) => {

@@ -27,6 +27,10 @@ class FeedManager {
     async hasWriteableFeed(feedId: FeedId) {
         return await this.localFeedManager.hasWriteableFeed(feedId)
     }
+    hasLoadedSubfeed(channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash) {
+        const k = feedSubfeedId(feedId, subfeedHash, channelName)
+        return this.#subfeeds.has(k)
+    }
     async appendMessages(args: { feedId: FeedId, subfeedHash: SubfeedHash, messages: SubfeedMessage[]}) {
         logger.debug(`FeedManager: Appending ${args.messages.length} messages to ${args.feedId}/${args.subfeedHash}`)
         // Append messages to a subfeed (must be in a writeable feed on this node)

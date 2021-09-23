@@ -49,7 +49,7 @@ class IncomingSubfeedConnection {
     async _doCheckUpload() {
         if (Number(this.#lowestReceivedPosition) < Number(this.subfeed.getNumLocalMessages())) {
             const numUploadedMessages = await this.subfeed.uploadSubfeedMessages(this.channelName)
-            this.#lowestReceivedPosition = subfeedPosition(numUploadedMessages)
+            this.#lowestReceivedPosition = subfeedPosition(Number(numUploadedMessages))
             this.subfeed.kacheryHubInterface.sendNumSubfeedMessagesUploadedMessage(this.channelName, this.subfeed.feedId, this.subfeed.subfeedHash, numUploadedMessages)
             this.#lastSentNumUploadedMessagesTimestamp = nowTimestamp()
         }

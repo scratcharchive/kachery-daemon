@@ -1,16 +1,16 @@
 import { Mutex } from 'async-mutex';
+import axios from 'axios';
+import logger from 'winston';
 import { hexToPublicKey, signMessage, verifySignature } from '../../commonInterface/crypto/signatures';
-import { byteCount, ByteCount, ChannelName, DurationMsec, durationMsecToNumber, FeedId, feedIdToPublicKeyHex, JSONObject, JSONStringifyDeterministic, messageCount, MessageCount, messageCountToNumber, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../../commonInterface/kacheryTypes';
+import { byteCount, ChannelName, DurationMsec, durationMsecToNumber, FeedId, feedIdToPublicKeyHex, JSONObject, messageCount, MessageCount, messageCountToNumber, nowTimestamp, PrivateKey, PublicKey, SignedSubfeedMessage, SubfeedHash, SubfeedMessage, subfeedPosition, SubfeedPosition, subfeedPositionToNumber } from '../../commonInterface/kacheryTypes';
 import randomAlphaString from '../../commonInterface/util/randomAlphaString';
 import { LocalFeedManagerInterface } from '../core/ExternalInterface';
 import KacheryHubInterface from '../core/KacheryHubInterface';
+import NodeStats from '../core/NodeStats';
 import IncomingSubfeedConnection from './IncomingSubfeedConnection';
 import LocalSubfeedSignedMessagesManager from './LocalSubfeedSignedMessagesManager';
 import OutgoingSubfeedConnection from './OutgoingSubfeedConnection';
 import RemoteSubfeedMessageDownloader from './RemoteSubfeedMessageDownloader';
-import logger from 'winston';
-import axios from 'axios';
-import NodeStats from '../core/NodeStats';
 
 class Subfeed {
     // Represents a subfeed, which may or may not be writeable on this node
@@ -40,9 +40,7 @@ class Subfeed {
         this.#remoteSubfeedMessageDownloader = new RemoteSubfeedMessageDownloader(this.kacheryHubInterface, this)
 
         this.#outgoingSubfeedConnection = new OutgoingSubfeedConnection(
-            this,
-            (messages: SignedSubfeedMessage[]) => {this._handleNewMessagesFromRemote(messages)},
-            (numUploadedMessages: MessageCount) => {this._handleNumUploadedMessagesFromRemote(numUploadedMessages)}
+            this
         )
     }
     async acquireLock() {
@@ -273,6 +271,15 @@ class Subfeed {
         await this.#localSubfeedSignedMessagesManager.addSignedMessages(signedMessagesToAdd);
         this._callNewMessagesCallbacks(signedMessagesToAdd)
     }
+    async downloadMessages(numUploadedMessages: MessageCount) {
+        const i1 = this.getNumLocalMessages()
+        const i2 = numUploadedMessages
+        const channelName = this.channelName
+        if (channelName === '*local*') return
+        if (i1 >= i2) return
+        const messages = await this.kacheryHubInterface.downloadSignedSubfeedMessages(channelName, this.feedId, this.subfeedHash, i1, i2)
+        this.addSignedMessages(messages)
+    }
     handleIncomingSubscription(channelName: ChannelName, position: SubfeedPosition) {
         let a = this.#incomingSubfeedConnectionsByChannel[channelName.toString()]
         if ((!a) || (a.isExpired())) {
@@ -281,11 +288,8 @@ class Subfeed {
         }
         a.handleIncomingSubscription(position)
     }
-    _handleNewMessagesFromRemote(messages: SignedSubfeedMessage[]) {
-        // todo-subscriptions
-    }
-    _handleNumUploadedMessagesFromRemote(numUploadedMessages: MessageCount) {
-        // todo-subscriptions
+    reportReceivedUpdateFromRemote() {
+        this.#outgoingSubfeedConnection.reportReceivedUpdateFromRemote()
     }
     _callNewMessagesCallbacks(messages: SignedSubfeedMessage[]) {
         if (messages.length === 0) return
