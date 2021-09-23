@@ -3,7 +3,7 @@ import logger from "winston"
 import FeedManager from '../feeds/FeedManager'
 import FileUploader, { SignedFileUploadUrlCallback } from '../FileUploader/FileUploader'
 import { KacheryNodeRequestBody } from '../kacheryNodeRequestTypes'
-import { ByteCount, ChannelName, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, UserId } from '../../commonInterface/kacheryTypes'
+import { ByteCount, channelName, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, UserId } from '../../commonInterface/kacheryTypes'
 import { KacheryHubPubsubMessageBody } from '../pubsubMessages'
 import { KacheryStorageManagerInterface, LocalFeedManagerInterface, MutableManagerInterface } from './ExternalInterface'
 import { getStats, GetStatsOpts } from './getStats'
@@ -67,11 +67,20 @@ class KacheryNode {
         this.#kacheryHubInterface.onIncomingFileRequest(({fileKey, channelName, fromNodeId}) => {
             this._handleIncomingFileRequest({fileKey, channelName, fromNodeId})
         })
-        this.#kacheryHubInterface.onRequestSubfeed((channelName, feedId, subfeedHash, position) => {
-            this.#feedManager.createOrRenewIncomingSubfeedSubscription(channelName, feedId, subfeedHash, position)
+
+        this.#kacheryHubInterface.onIncomingSubfeedSubscription((channelName: ChannelName, feedId: FeedId, subfeedHash: SubfeedHash, position: SubfeedPosition) => {
+            ;(async () => {
+                if (!this.#feedManager.hasWriteableFeed(feedId)) return
+                const sf = await this.#feedManager._loadSubfeed(feedId, subfeedHash, '*local*')
+                sf.handleIncomingSubscription(channelName, position)
+            })()
         })
-        this.#kacheryHubInterface.onUpdateSubfeedMessageCount((channelName, feedId, subfeedHash, messageCount) => {
-            this.#feedManager.reportSubfeedMessageCountUpdate(channelName, feedId, subfeedHash, messageCount)
+
+        this.#kacheryHubInterface.onNewSubfeedMessages((channelName, feedId, subfeedHash, messages) => {
+            // todo-subscription
+        })
+        this.#kacheryHubInterface.onNumSubfeedMessagesUploaded((channelName, feedId, subfeedHash, numUploadedMessages) => {
+            // todo-subscription
         })
 
         const signedFileUploadUrlCallback: SignedFileUploadUrlCallback = async (a: {channelName: ChannelName, sha1: Sha1Hash, size: ByteCount}) => {
