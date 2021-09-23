@@ -12,4 +12,4 @@ Requires Nodejs >= 12.
 
 ## Installation and setup
 
-See [hosting a kachery node](https://github.com/kacheryhub/kachery-doc/blob/main/doc/kacheryhub-markdown/hostKacheryNode.md)
+See [hosting a kachery node](https://github.com/kacheryhub/kachery-doc/blob/main/doc/hostKacheryNode.md)
