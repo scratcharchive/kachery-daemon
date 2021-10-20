@@ -4,16 +4,16 @@ import JsonSocket from 'json-socket';
 import { Socket } from 'net';
 import { action } from './action';
 import DataStreamy from '../commonInterface/util/DataStreamy';
-import { byteCount, durationMsecToNumber, elapsedSince, isJSONObject, JSONObject, mapToObject, messageCount, nowTimestamp, Port, scaledDurationMsec, toSubfeedWatchesRAM } from '../commonInterface/kacheryTypes';
+import { byteCount, durationMsecToNumber, elapsedSince, FileKey, isJSONObject, JSONObject, mapToObject, messageCount, nowTimestamp, Port, scaledDurationMsec, toSubfeedWatchesRAM, UrlString } from '../commonInterface/kacheryTypes';
 import { sleepMsec } from '../commonInterface/util/util';
 import daemonVersion from '../daemonVersion';
 import ExternalInterface, { HttpServerInterface } from '../kacheryInterface/core/ExternalInterface';
 import { isGetStatsOpts, NodeStatsInterface } from '../kacheryInterface/core/getStats';
 import KacheryNode from '../kacheryInterface/core/KacheryNode';
 import { loadFile } from '../kacheryInterface/core/loadFile';
-import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskRegisterTaskFunctionsRequest, isTaskRequestTaskRequest, isTaskUpdateTaskStatusRequest, isTaskWaitForTaskResultRequest, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskRegisterTaskFunctionsResponse, TaskRequestTaskResponse, TaskUpdateTaskStatusResponse, TaskWaitForTaskResultResponse } from './daemonApiTypes';
+import { ApiLoadFileRequest, DaemonApiProbeResponse, FeedApiAppendMessagesResponse, FeedApiCreateFeedResponse, FeedApiDeleteFeedResponse, FeedApiGetFeedIdResponse, FeedApiGetFeedInfoResponse, FeedApiGetNumLocalMessagesResponse, FeedApiWatchForNewMessagesResponse, isApiDownloadFileDataRequest, isApiLoadFileRequest, isFeedApiAppendMessagesRequest, isFeedApiCreateFeedRequest, isFeedApiDeleteFeedRequest, isFeedApiGetFeedIdRequest, isFeedApiGetFeedInfoRequest, isFeedApiGetNumLocalMessagesRequest, isFeedApiWatchForNewMessagesRequest, isLinkFileRequestData, isMutableApiDeleteRequest, isMutableApiGetRequest, isMutableApiSetRequest, isStoreFileRequestData, isTaskCreateSignedTaskResultUploadUrlRequest, isTaskRegisterTaskFunctionsRequest, isTaskRequestTaskRequest, isTaskUpdateTaskStatusRequest, isTaskWaitForTaskResultRequest, isUploadFileRequestData, LinkFileResponseData, MutableApiDeleteResponse, MutableApiGetResponse, MutableApiSetResponse, StoreFileResponseData, TaskCreateSignedTaskResultUploadUrlResponse, TaskRegisterTaskFunctionsResponse, TaskRequestTaskResponse, TaskUpdateTaskStatusResponse, TaskWaitForTaskResultResponse, UploadFileResponseData, isCreateSignedFileUploadUrlRequest, CreateSignedFileUploadUrlResponse } from './daemonApiTypes';
 import { RequestedTask } from '../kacheryInterface/kacheryHubTypes';
-import logger from "winston";;
+import logger from "winston";
 
 export default class DaemonApiServer {
     #node: KacheryNode
@@ -81,6 +81,21 @@ export default class DaemonApiServer {
                 /* istanbul ignore next */
                 return await this._handleLinkFile(reqData)
             },
+            browserAccess: false
+        },
+        {
+            // /uploadFile - Upload a stored file to a kachery channel
+            path: '/uploadFile',
+            handler: async (reqData: JSONObject) => {
+                /* istanbul ignore next */
+                return await this._handleUploadFile(reqData)
+            },
+            browserAccess: false
+        },
+        {
+            // /createSignedFileUploadUrl
+            path: '/createSignedFileUploadUrl',
+            handler: async (reqData: JSONObject) => {return await this._handleCreateSignedFileUploadUrl(reqData)},
             browserAccess: false
         },
         {
@@ -331,6 +346,26 @@ export default class DaemonApiServer {
         }
         /* istanbul ignore next */
         if (!isJSONObject(response)) throw Error('Unexpected json object in _handleStoreFile')
+        return response
+    }
+    // /uploadFile - Upload a stored file to a kachery channel
+    /* istanbul ignore next */
+    async _handleUploadFile(reqData: JSONObject): Promise<JSONObject> {
+        if (!isUploadFileRequestData(reqData)) throw Error('Unexpected request data for uploadFile.')
+        
+        const fileKey: FileKey = {
+            sha1: reqData.sha1
+        }
+        const {found, size, localFilePath} = await this.#node.kacheryStorageManager().findFile(fileKey)
+        if (!found) throw Error('uploadFile: File not found in kachery storage')
+        if (!size) throw Error('uploadFile: Size is zero or null.')
+        if (Number(size) > 20 * 1000 * 1000) throw Error('uploadFile: File too large for upload')
+        await this.#node.uploadFile({fileKey, channelName: reqData.channel, fileSize: size})
+        const response: UploadFileResponseData = {
+            success: true
+        }
+        /* istanbul ignore next */
+        if (!isJSONObject(response)) throw Error('Unexpected json object in _handleUploadFile')
         return response
     }
     // /linkFile - link local file in local kachery storage
@@ -703,6 +738,37 @@ export default class DaemonApiServer {
         const signedUrl = await this.#node.kacheryHubInterface().createSignedTaskResultUploadUrl({channelName, taskId, size})
 
         const response: TaskCreateSignedTaskResultUploadUrlResponse = {success: true, signedUrl}
+        if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
+        return response
+    }
+    // /createSignedFileUploadUrl
+    async _handleCreateSignedFileUploadUrl(reqData: JSONObject) {
+        /* istanbul ignore next */
+        if (!isCreateSignedFileUploadUrlRequest(reqData)) throw Error('Invalid request in _handleCreateSignedFileUploadUrl')
+        const { channelName, sha1 } = reqData
+
+        let success: boolean
+        let alreadyUploaded: boolean
+        let signedUrl: UrlString | undefined
+        const exists = await this.#node.kacheryHubInterface().checkForFileInChannelBucket(sha1, channelName)
+        if (exists) {
+            success = true
+            alreadyUploaded = true
+            signedUrl = undefined
+        }
+        else {
+            alreadyUploaded = false
+            const {found, size} = await this.#node.kacheryStorageManager().findFile({sha1})
+            if (!found) {
+                success = false
+            }
+            else {
+                success = true
+                signedUrl = await this.#node.kacheryHubInterface().createSignedFileUploadUrl({channelName, sha1, size})
+            }
+        }
+        
+        const response: CreateSignedFileUploadUrlResponse = {success, alreadyUploaded, signedUrl}
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
         return response
     }

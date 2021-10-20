@@ -1,6 +1,6 @@
 import logger from "winston"
 import { BitwooderResourceRequest, BitwooderResourceResponse } from '../../bitwooderInterface/BitwooderResourceRequest'
-import { ByteCount, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, UserId } from '../../commonInterface/kacheryTypes'
+import { ByteCount, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, urlString, UserId } from '../../commonInterface/kacheryTypes'
 import FeedManager from '../feeds/FeedManager'
 import FileUploader, { SignedFileUploadUrlCallback } from '../FileUploader/FileUploader'
 import { KacheryNodeRequestBody } from '../kacheryNodeRequestTypes'
@@ -164,10 +164,14 @@ class KacheryNode {
         const x = await this.#kacheryStorageManager.findFile(args.fileKey)
         if (x.found) {
             this.#kacheryHubInterface.sendUploadFileStatusMessage({channelName: args.channelName, fileKey: args.fileKey, status: 'started'})
-            // todo: use pending status and only upload certain number at a time
-            await this.#fileUploader.uploadFileToBucket({channelName: args.channelName, fileKey: args.fileKey, fileSize: x.size})
+            await this.uploadFile({channelName: args.channelName, fileKey: args.fileKey, fileSize: x.size})
             this.#kacheryHubInterface.sendUploadFileStatusMessage({channelName: args.channelName, fileKey: args.fileKey, status: 'finished'})
         }
+    }
+    async uploadFile(args: {fileKey: FileKey, channelName: ChannelName, fileSize: ByteCount}) {
+        const {fileKey, channelName, fileSize} = args
+        // todo: use pending status and only upload certain number at a time
+        await this.#fileUploader.uploadFileToBucket({channelName, fileKey, fileSize})
     }
 }
 

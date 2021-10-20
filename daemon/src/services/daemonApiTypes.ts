@@ -50,6 +50,20 @@ export type LinkFileResponseData = {
     manifestSha1: Sha1Hash | null
 }
 
+export type UploadFileRequestData = {
+    sha1: Sha1Hash
+    channel: ChannelName
+}
+export const isUploadFileRequestData = (x: any): x is UploadFileRequestData => {
+    return _validateObject(x, {
+        sha1: isSha1Hash,
+        channel: isChannelName
+    })
+}
+export type UploadFileResponseData = {
+    success: boolean
+}
+
 // interface Req {
 //     body: any,
 //     on: (eventName: string, callback: () => void) => void,
@@ -64,6 +78,33 @@ export type LinkFileResponseData = {
 //     status: (s: number) => Res,
 //     send: (x: any) => Res
 // }
+
+export type CreateSignedFileUploadUrlRequest = {
+    channelName: ChannelName
+    sha1: Sha1Hash
+}
+
+export const isCreateSignedFileUploadUrlRequest = (x: any): x is CreateSignedFileUploadUrlRequest => {
+    return _validateObject(x, {
+        channelName: isChannelName,
+        sha1: isSha1Hash
+    })
+}
+
+export type CreateSignedFileUploadUrlResponse = {
+    success: boolean
+    alreadyUploaded: boolean
+    signedUrl?: UrlString
+}
+
+export const isCreateSignedFileUploadUrlResponse = (x: any): x is CreateSignedFileUploadUrlResponse => {
+    return _validateObject(x, {
+        success: isBoolean,
+        alreadyUploaded: isBoolean,
+        signedUrl: optional(isUrlString)
+    })
+}
+
 
 export interface ApiLoadFileRequest {
     fileKey: FileKey
