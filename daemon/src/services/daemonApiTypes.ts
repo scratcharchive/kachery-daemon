@@ -82,12 +82,14 @@ export type UploadFileResponseData = {
 export type CreateSignedFileUploadUrlRequest = {
     channelName: ChannelName
     sha1: Sha1Hash
+    size?: ByteCount
 }
 
 export const isCreateSignedFileUploadUrlRequest = (x: any): x is CreateSignedFileUploadUrlRequest => {
     return _validateObject(x, {
         channelName: isChannelName,
-        sha1: isSha1Hash
+        sha1: isSha1Hash,
+        size: optional(isByteCount)
     })
 }
 

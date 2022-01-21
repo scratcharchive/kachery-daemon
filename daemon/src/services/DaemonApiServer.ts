@@ -760,11 +760,25 @@ export default class DaemonApiServer {
             alreadyUploaded = false
             const {found, size} = await this.#node.kacheryStorageManager().findFile({sha1})
             if (!found) {
-                success = false
+                // sometimes we might have content to upload, but it's not in kachery storage (like chunks of a file)
+                // in that case we need to have the size in the request
+                if (reqData.size) {
+                    success = true
+                    signedUrl = await this.#node.kacheryHubInterface().createSignedFileUploadUrl({channelName, sha1, size: reqData.size})
+                }
+                else {
+                    success = false
+                }
             }
             else {
-                success = true
-                signedUrl = await this.#node.kacheryHubInterface().createSignedFileUploadUrl({channelName, sha1, size})
+                if ((!reqData.size) || (reqData.size === size)) {
+                    success = true
+                    signedUrl = await this.#node.kacheryHubInterface().createSignedFileUploadUrl({channelName, sha1, size})
+                }
+                else {
+                    // size mismatch
+                    success = false
+                }
             }
         }
         
