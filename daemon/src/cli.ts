@@ -149,6 +149,14 @@ function main() {
         if (!isString(bitwooderUrl)) throw Error('bitwooder-url is not a string')
         logger.info(`Bitwooder URL: ${bitwooderUrl}`)
 
+        if (ownerId) {
+          logger.info('Writing owner file')
+          fs.writeFileSync(`${storageDir}/owner`, ownerId.toString())
+        }
+        else {
+          logger.info('No owner -- not writing owner file')
+        }
+
         logger.info('Signature test: starting')
         await testSignatures()
         logger.info('Signature test: passed')

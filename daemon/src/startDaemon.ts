@@ -64,6 +64,11 @@ const startDaemon = async (args: {
     const keyPair = storageDir ? await _loadKeypair(storageDir) : await createKeyPair()
     const nodeId = publicKeyHexToNodeId(publicKeyToHex(keyPair.publicKey)) // get the node id from the public key
 
+    // testing
+    const testMessage = {a: 1, b: 2}
+    const testSignature = await signMessage(testMessage, keyPair)
+    console.info(`Test signature: ${testSignature}`)
+
     if (storageDir) {
         fs.writeFileSync(`${storageDir}/kachery-node-id`, `${nodeId}`)
     }

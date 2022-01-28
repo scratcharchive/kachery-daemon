@@ -1,6 +1,6 @@
 import logger from "winston"
 import { BitwooderResourceRequest, BitwooderResourceResponse } from '../../bitwooderInterface/BitwooderResourceRequest'
-import { ByteCount, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, urlString, UserId } from '../../commonInterface/kacheryTypes'
+import { ByteCount, ChannelName, FeedId, FileKey, isArrayOf, isString, JSONValue, NodeId, NodeLabel, Sha1Hash, Signature, SubfeedHash, SubfeedPosition, UserId } from '../../commonInterface/kacheryTypes'
 import FeedManager from '../feeds/FeedManager'
 import FileUploader, { SignedFileUploadUrlCallback } from '../FileUploader/FileUploader'
 import { KacheryNodeRequestBody } from '../kacheryNodeRequestTypes'
