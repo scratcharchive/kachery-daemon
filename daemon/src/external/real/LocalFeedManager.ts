@@ -175,7 +175,7 @@ class FeedsConfigManager {
         const config: FeedConfig = {
             feedId, privateKey
         }
-        await this.mutableManager.set({type: 'feedConfig', feedId: feedId.toString()}, config as any as JSONValue)
+        await this.mutableManager.set({type: 'feedConfig', feedId: feedId.toString()}, config as any as JSONValue, {update: true})
     }
     async getFeedConfig(feedId: FeedId): Promise<FeedConfig | null> {
         const r = await this.mutableManager.get({type: 'feedConfig', feedId: feedId.toString()})
@@ -190,7 +190,7 @@ class FeedsConfigManager {
         await this.mutableManager.delete({type: 'feedConfig', feedId: feedId.toString()})
     }
     async setFeedIdForName(feedName: FeedName, feedId: FeedId) {
-        await this.mutableManager.set({type: 'feedIdForName', feedName: feedName.toString()}, feedId.toString())
+        await this.mutableManager.set({type: 'feedIdForName', feedName: feedName.toString()}, feedId.toString(), {update: true})
     }
     async getFeedIdForName(feedName: FeedName): Promise<FeedId | null> {
         const x = await this.mutableManager.get({type: 'feedIdForName', feedName: feedName.toString()})

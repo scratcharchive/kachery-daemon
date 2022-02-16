@@ -26,6 +26,7 @@ export const tryParseJsonObject = (x: string): JSONObject | null => {
 export const isJSONSerializable = (obj: any): boolean => {
     if (typeof(obj) === 'string') return true
     if (typeof(obj) === 'number') return true
+    if (typeof(obj) === 'boolean') return true
     if (!isObject(obj)) return false
     const isPlainObject = (a: Object) => {
         return Object.prototype.toString.call(a) === '[object Object]';

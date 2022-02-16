@@ -73,9 +73,9 @@ export interface LocalFeedManagerInterface {
 export type CreateLocalFeedManagerFunction = (mutableManager: MutableManagerInterface) => LocalFeedManagerInterface
 
 export interface MutableManagerInterface {
-    set: (key: JSONValue, value: JSONValue) => Promise<void>
+    set: (key: JSONValue, value: JSONValue, opts: {update: boolean}) => Promise<boolean>
     get: (key: JSONValue) => Promise<MutableRecord | undefined>
-    delete: (key: JSONValue) => Promise<void>
+    delete: (key: JSONValue) => Promise<boolean>
     onSet: (callback: (key: JSONValue) => void) => void
 }
 

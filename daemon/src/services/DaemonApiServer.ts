@@ -153,6 +153,12 @@ export default class DaemonApiServer {
             browserAccess: true
         },
         {
+            // /mutable/delete - delete a mutable value
+            path: '/mutable/delete',
+            handler: async (reqData: JSONObject) => {return await this._handleMutableApiDelete(reqData)},
+            browserAccess: true
+        },
+        {
             // /task/registerTaskFunctions
             path: '/task/registerTaskFunctions',
             handler: async (reqData: JSONObject) => {return await this._handleTaskRegisterTaskFunctions(reqData)},
@@ -673,10 +679,11 @@ export default class DaemonApiServer {
         /* istanbul ignore next */
         if (!isMutableApiSetRequest(reqData)) throw Error('Invalid request in _mutableApiSet')
         const { key, value } = reqData
+        const update = reqData.update !== undefined ? reqData.update : true // default true
 
-        await this.#node.mutableManager().set(key, value)
+        const success = await this.#node.mutableManager().set(key, value, {update})
 
-        const response: MutableApiSetResponse = {success: true}
+        const response: MutableApiSetResponse = {success}
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
         return response
     }
@@ -698,9 +705,9 @@ export default class DaemonApiServer {
         if (!isMutableApiDeleteRequest(reqData)) throw Error('Invalid request in _mutableApiDelete')
         const { key } = reqData
 
-        await this.#node.mutableManager().delete(key)
+        const success = await this.#node.mutableManager().delete(key)
 
-        const response: MutableApiDeleteResponse = {success: true}
+        const response: MutableApiDeleteResponse = {success}
         if (!isJSONObject(response)) throw Error('Unexpected, not a JSON-serializable object')
         return response
     }

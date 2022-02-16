@@ -158,11 +158,13 @@ export const isFeedApiWatchForNewMessagesResponse = (x: any): x is FeedApiWatchF
 export interface MutableApiSetRequest {
     key: JSONValue
     value: JSONValue
+    update?: boolean // default true
 }
 export const isMutableApiSetRequest = (x: any): x is MutableApiSetRequest => {
     return _validateObject(x, {
         key: isJSONValue,
-        value: isJSONValue
+        value: isJSONValue,
+        update: optional(isBoolean) // default true
     })
 }
 export interface MutableApiSetResponse {
