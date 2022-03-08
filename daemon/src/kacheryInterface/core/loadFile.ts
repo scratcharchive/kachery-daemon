@@ -5,7 +5,7 @@ import { byteCount, ByteCount, byteCountToNumber, ChannelName, elapsedSince, Fil
 import logger from "winston";
 
 
-export const loadFileAsync = async (node: KacheryNode, fileKey: FileKey, opts: {label: string}): Promise<{found: boolean, size: ByteCount, localFilePath: LocalFilePath | null}> => {
+export const loadFileAsync = async (node: KacheryNode, fileKey: FileKey, opts: {channelName?: ChannelName, label: string}): Promise<{found: boolean, size: ByteCount, localFilePath: LocalFilePath | null}> => {
     const r = await node.kacheryStorageManager().findFile(fileKey)
     if (r.found) {
         return r
@@ -64,7 +64,8 @@ async function asyncLoop<T>(list: T[], func: (item: T, index: number) => Promise
     })
 }
 
-export const loadFile = async (node: KacheryNode, fileKey: FileKey, opts: {label: string, _numRetries?: number}): Promise<DataStreamy> => {
+// old system did not include channelName, with new system it is mandatory
+export const loadFile = async (node: KacheryNode, fileKey: FileKey, opts: {channelName?: ChannelName, label: string, _numRetries?: number}): Promise<DataStreamy> => {
     const r = await node.kacheryStorageManager().findFile(fileKey)
     if (r.found) {
         if (true) { // for debugging (not finding locally) switch to false
@@ -82,7 +83,7 @@ export const loadFile = async (node: KacheryNode, fileKey: FileKey, opts: {label
         const manifestFileKey = {sha1: manifestSha1}
         let manifestR
         try {
-            manifestR = await loadFileAsync(node, manifestFileKey, {label: `${opts.label} manifest`})
+            manifestR = await loadFileAsync(node, manifestFileKey, {channelName: opts.channelName, label: `${opts.label} manifest`})
         }
         catch(err: any) {
             logger.warn(`Manifest not found: ${manifestSha1}`)
@@ -152,7 +153,7 @@ export const loadFile = async (node: KacheryNode, fileKey: FileKey, opts: {label
                     }
                     logger.info(`${opts.label}: Handling chunk ${chunkIndex} of ${manifest.chunks.length}`)
                     const label0 = `${opts.label} ch ${chunkIndex}`
-                    const ds = await loadFile(node, chunkFileKey, {label: label0, _numRetries: 2})
+                    const ds = await loadFile(node, chunkFileKey, {channelName: opts.channelName, label: label0, _numRetries: 2})
                     chunkDataStreams.push(ds)
                     return new Promise<void>((resolve, reject) => {
                         ds.onError(err => {
@@ -189,14 +190,19 @@ export const loadFile = async (node: KacheryNode, fileKey: FileKey, opts: {label
         return ret
     }
     const loadFileWithoutManifest = async (): Promise<DataStreamy> => {
+        if (!opts.channelName) {
+            const ret = new DataStreamy()
+            ret.producer().error(new Error('Unable to find file. No channelName specified.'))
+            return ret    
+        }
         let timer = nowTimestamp()
         for (let pass = 1; pass <= 2; pass++) {
-            const results: {downloadUrl: UrlString, channelName: ChannelName}[] | null = await node.kacheryHubInterface().checkForFileInChannelBuckets(fileKey.sha1)
-            if ((results) && (results.length > 0)) {
-                return await node.kacheryStorageManager().storeFileFromBucketUrl(results[0].downloadUrl, {sha1: fileKey.sha1, nodeStats: node.stats(), channelName: results[0].channelName})
+            const resultUrl = await node.kacheryHubInterface().checkForFileInChannelBucket(fileKey.sha1, opts.channelName)
+            if (resultUrl) {
+                return await node.kacheryStorageManager().storeFileFromBucketUrl(resultUrl, {sha1: fileKey.sha1, nodeStats: node.stats(), channelName: opts.channelName})
             }
             if (pass === 1) {
-                const success = await node.kacheryHubInterface().requestFileFromChannels(fileKey)
+                const success = await node.kacheryHubInterface().requestFileFromChannel(fileKey, opts.channelName)
                 if (!success) break
             }
         }

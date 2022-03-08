@@ -110,10 +110,12 @@ export const isCreateSignedFileUploadUrlResponse = (x: any): x is CreateSignedFi
 
 export interface ApiLoadFileRequest {
     fileKey: FileKey
+    channelName?: ChannelName // old system did not include channelName, with new system it is mandatory
 }
 export const isApiLoadFileRequest = (x: any): x is ApiLoadFileRequest => {
     return _validateObject(x, {
-        fileKey: isFileKey
+        fileKey: isFileKey,
+        channelName: optional(isChannelName)
     });
 }
 

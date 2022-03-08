@@ -436,6 +436,9 @@ export default class DaemonApiServer {
             res.end()
             return
         }
+        if (!apiLoadFileRequest.channelName) {
+            console.warn('In loadFile: no channelName specified. Please upgrade kachery-client.')
+        }
         try {
             x = await this._loadFile(apiLoadFileRequest)
         }
@@ -564,7 +567,7 @@ export default class DaemonApiServer {
         /* istanbul ignore next */
         if (!isApiLoadFileRequest(reqData)) throw Error('Invalid request in _apiLoadFile');
 
-        const { fileKey } = reqData;
+        const { fileKey, channelName } = reqData;
         if (fileKey.manifestSha1) {
             logger.info(`Loading file: sha1://${fileKey.sha1}?manifest=${fileKey.manifestSha1}`)
         }
@@ -574,7 +577,7 @@ export default class DaemonApiServer {
         const x = await loadFile(
             this.#node,
             fileKey,
-            {label: fileKey.sha1.toString().slice(0, 5)}
+            {channelName, label: fileKey.sha1.toString().slice(0, 5)}
         )
         return x
     }

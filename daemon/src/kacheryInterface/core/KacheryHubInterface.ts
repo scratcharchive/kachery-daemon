@@ -82,43 +82,10 @@ class KacheryHubInterface {
         this.#initializing = false
         this.#onInitializedCallbacks.forEach(cb => {cb()})
     }
-    async checkForFileInChannelBuckets(sha1: Sha1Hash): Promise<{downloadUrl: UrlString, channelName: ChannelName}[] | null> {
-        logger.debug(`KacheryHubInterface: checkForFileInChannelBuckets ${sha1}`)
-        await this.initialize()
-        if (!this.#channelMemberships) return null
-        const options: {downloadUrl: UrlString, channelName: ChannelName}[] = []
-        // const checkedBucketUrls = new Set<string>()
-        for (let cm of (this.#channelMemberships || [])) {
-            const channelName = cm.channelName
-            // const bucketUri = cm.channelBucketUri
-            // if (bucketUri) {
-            //     const bucketUrl = urlFromUri(bucketUri)
-            //     if (!checkedBucketUrls.has(bucketUrl)) {
-            //         checkedBucketUrls.add(bucketUrl)
-            //         const s = sha1.toString()
-            //         const url2 = urlString(`${bucketUrl}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`)
-            //         const exists = await checkUrlExists(url2)
-            //         if (exists) {
-            //             options.push({downloadUrl: url2, channelName})
-            //         }
-            //     }
-            // }
-            const bucketBaseUrl = cm.channelBucketBaseUrl
-            if (bucketBaseUrl) {
-                const s = sha1.toString()
-                const url2 = urlString(`${bucketBaseUrl}/${channelName}/sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`)
-                const exists = await checkUrlExists(url2)
-                if (exists) {
-                    options.push({downloadUrl: url2, channelName})
-                }
-            }
-        }
-        return options
-    }
-    async checkForFileInChannelBucket(sha1: Sha1Hash, channelName: ChannelName): Promise<boolean> {
+    async checkForFileInChannelBucket(sha1: Sha1Hash, channelName: ChannelName): Promise<UrlString | undefined> {
         logger.debug(`KacheryHubInterface: checkForFileInChannelBucket ${channelName} ${sha1}`)
         await this.initialize()
-        if (!this.#channelMemberships) return false
+        if (!this.#channelMemberships) return undefined
         // const checkedBucketUrls = new Set<string>()
         for (let cm of (this.#channelMemberships || [])) {
             if (channelName === cm.channelName) {
@@ -127,11 +94,11 @@ class KacheryHubInterface {
                     const s = sha1
                     const filePath = `sha1/${s[0]}${s[1]}/${s[2]}${s[3]}/${s[4]}${s[5]}/${s}`
                     const url2 = urlString(`${bucketBaseUrl}/${channelName}/${filePath}`)
-                    return await checkUrlExists(url2)
+                    if (await checkUrlExists(url2)) return url2
                 }
             }
         }
-        return false
+        return undefined
     }
     async checkForSubfeedInChannelBucket(feedId: FeedId, subfeedHash: SubfeedHash, channelName: ChannelName): Promise<MessageCount | null> {
         logger.debug(`KacheryHubInterface: checkForSubfeedInChannelBucket ${channelName} ${feedId}/${subfeedHash}`)
@@ -174,8 +141,8 @@ class KacheryHubInterface {
         }
         return null
     }
-    async requestFileFromChannels(fileKey: FileKey): Promise<boolean> {
-        logger.debug(`KacheryHubInterface: requestFileFromChannels ${fileKey.sha1}`)
+    async requestFileFromChannel(fileKey: FileKey, channelName: ChannelName): Promise<boolean> {
+        logger.debug(`KacheryHubInterface: requestFileFromChannel ${fileKey.sha1}`)
         await this.initialize()
         if (!this.#channelMemberships) return false
         let status: '' | 'pending' | 'started' | 'finished' = ''
@@ -190,29 +157,33 @@ class KacheryHubInterface {
             let complete = false
             const {cancel: cancelListener} = this.#kacheryHubClient.onIncomingPubsubMessage((msg) => {
                 if (complete) return
-                if ((msg.message.type === 'uploadFileStatus') && (fileKeysMatch(msg.message.fileKey, fileKey))) {
-                    const newStatus = msg.message.status
-                    const currentStage = stageFromStatus[status]
-                    const newStage = stageFromStatus[newStatus]
-                    if (newStage > currentStage) {
-                        status = newStatus
-                        timer = nowTimestamp()
-                    }
-                    if (status === 'finished') {
-                        complete = true
-                        cancelListener()
-                        resolve(true)
+                if (msg.channelName === channelName) {
+                    if ((msg.message.type === 'uploadFileStatus') && (fileKeysMatch(msg.message.fileKey, fileKey))) {
+                        const newStatus = msg.message.status
+                        const currentStage = stageFromStatus[status]
+                        const newStage = stageFromStatus[newStatus]
+                        if (newStage > currentStage) {
+                            status = newStatus
+                            timer = nowTimestamp()
+                        }
+                        if (status === 'finished') {
+                            complete = true
+                            cancelListener()
+                            resolve(true)
+                        }
                     }
                 }
             })
             for (let cm of (this.#channelMemberships || [])) {
-                const au = cm.authorization
-                if ((au) && (au.permissions.requestFiles)) {
-                    const msg: RequestFileMessageBody = {
-                        type: 'requestFile',
-                        fileKey
+                if (cm.channelName === channelName) {
+                    const au = cm.authorization
+                    if ((au) && (au.permissions.requestFiles)) {
+                        const msg: RequestFileMessageBody = {
+                            type: 'requestFile',
+                            fileKey
+                        }
+                        this._publishMessageToPubsubChannel(cm.channelName, pubsubChannelName(`${cm.channelName}-requestFiles`), msg)
                     }
-                    this._publishMessageToPubsubChannel(cm.channelName, pubsubChannelName(`${cm.channelName}-requestFiles`), msg)
                 }
             }
             const check = () => {

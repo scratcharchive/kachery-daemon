@@ -185,7 +185,7 @@ export class KacheryStorageManager {
             })
         })
     }
-    async storeFileFromBucketUrl(url: UrlString, o: {sha1: Sha1Hash, nodeStats: NodeStats, channelName: ChannelName | null}): Promise<DataStreamy> {
+    async storeFileFromBucketUrl(url: UrlString, o: {sha1: Sha1Hash, nodeStats: NodeStats, channelName: ChannelName}): Promise<DataStreamy> {
         const tmpDestPath = `${this.#storageDir}/store.file.${randomAlphaString(10)}.tmp`
         const writeStream = fs.createWriteStream(tmpDestPath)
         const shasum = crypto.createHash('sha1')
