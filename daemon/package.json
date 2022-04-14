@@ -31,7 +31,7 @@
     "json-socket": "^0.3.0",
     "jsonschema": "^1.2.6",
     "sqlite": "^4.0.17",
-    "sqlite3": "^5.0.0",
+    "sqlite3": "5.0.2",
     "tweetnacl": "^1.0.3",
     "winston": "^3.3.3",
     "ws": "^7.3.1",
